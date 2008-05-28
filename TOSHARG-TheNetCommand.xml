@@ -1,0 +1,971 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE chapter PUBLIC "-//Samba-Team//DTD DocBook V4.2-Based Variant V1.0//EN" "http://www.samba.org/samba/DTD/samba-doc">
+<chapter id="NetCommand">
+<chapterinfo>
+	&author.jht;
+	&author.vl;
+	&author.gd;
+	<pubdate>9 Мая 2005г.</pubdate>
+</chapterinfo>
+
+<title>Удаленное и местное управление: команда Net</title>
+
+<para><indexterm><primary>net</primary></indexterm><indexterm><primary>удаленное управление</primary></indexterm><indexterm><primary>командная строка</primary></indexterm><indexterm><primary>управление из сценариев</primary></indexterm> Команда <command>net</command> является одной из новых особенностей Samba-3,  и является попыткой предоставить употребимый инструмент для большинства операций удаленного управления, необходимых для общих задач. Утилита <command>net</command> разработана гибкой, и предназначена для использования из командной строки, так же как и в приложениях сценарного управления.</para>
+
+<para><indexterm><primary>net</primary></indexterm><indexterm><primary>набор инструментов сетевого администратора</primary></indexterm><indexterm><primary>smbgroupedit</primary></indexterm><indexterm><primary>rpcclient</primary></indexterm> Изначально представленная с намерением подражания команде Microsoft Windows, имеющей то же имя, команда <command>net</command> превратилась в очень мощный инструмент, который стал неотъемлемой частью набора инструментов сетевого администратора Samba. Команда Samba представила инструменты, такие, как <command>smbgroupedit</command> и <command>rpcclient</command>, из которых по-настоящему полезные возможности были интегрированы в <command>net</command>. Команду <command>smbgroupedit</command> команда  <command>net</command> вобрала в себя целиком, в то время как из команды <command>rpcclient</command> были перенесены только некоторые функции. Все, кто находит старые ссылки на эти утилиты и на функциональность, предлагавшуюся ими, должны смотреть на команду <command>net</command> перед поиском информации где-то еще.</para>
+
+<para>Администратор Samba-3 не должен стараться проглядеть эту главу, поскольку это приведет к причинению себе боли, агонии и удушью. Вы предупреждены: это важная глава.</para>
+
+	<sect1>
+	<title>Обзор</title>
+
+	<para><indexterm><primary>одиночный</primary></indexterm><indexterm><primary>участник домена</primary></indexterm><indexterm><primary>PDC</primary></indexterm><indexterm><primary>BDC</primary></indexterm><indexterm><primary>сервер-участник домена</primary></indexterm><indexterm><primary>аутентификация</primary></indexterm> Задачи, которые следуют за установкой сервера Samba-3, будь то одиночного или участника домена или контроллера домена (PDC or BDC), начинаются с необходимости создать административные права. Конечно, создание учетных записей пользователей и групп является важным как для одиночного сервера, так и для PDC. В случае BDC или сервера-участника домена (DMS), учетные записи пользователей и групп домена получаются из центральной базы аутентификации домена.</para>
+
+	<para><indexterm><primary>тип сервера</primary></indexterm><indexterm><primary>локальные группы UNIX</primary></indexterm><indexterm><primary>отображенные</primary></indexterm><indexterm><primary>глобальные группы домена</primary></indexterm><indexterm><primary>UID</primary></indexterm><indexterm><primary>GID</primary></indexterm><indexterm><primary>права доступа</primary></indexterm><indexterm><primary>net</primary></indexterm> Независимо от типа сервера, который устанавливается, локальные группы UNIX должны быть отображены на учетные записи глобальных групп домена Windows. Спрашиваете, почему? Потому что Samba всегда ограничивает доступ к ресурсам сервера через использование UNIX UID и GID. Это значит, что локальные группы должны быть отображены на глобальные группы домена, так что пользователям домена, которые являются членами глобальной группы домена, могут быть предоставлены права доступа, основанные на UID'ах и GID'ах, локальных для сервера, на котором работает Samba. Такие отображения выполняются с использованием команды <command>net</command>.</para>
+
+	<para><indexterm><primary>PDC</primary></indexterm><indexterm><primary>BDC</primary></indexterm><indexterm><primary>DMS</primary></indexterm><indexterm><primary>учетная запись безопасности</primary></indexterm><indexterm><primary>аутентификация в домене</primary></indexterm><indexterm><primary>учетные записи доверия</primary></indexterm><indexterm><primary>net</primary></indexterm> UNIX-системы, на которых сервер Samba-3 работает как участник (PDC, BDC, или DMS) должны иметь учетную запись машины в базе данных (или каталоге) аутентификации домена. Создание такой учетной записи безопасности (или доверия) также производится командой <command>net</command>.</para>
+
+	<para><indexterm><primary>междоменные доверительные отношения</primary></indexterm><indexterm><primary>net</primary></indexterm><indexterm><primary>административные задачи</primary></indexterm><indexterm><primary>управление пользователями </primary></indexterm><indexterm><primary>управление группами</primary></indexterm><indexterm><primary>управление общими ресурсами</primary></indexterm><indexterm><primary>управление принтерами</primary></indexterm><indexterm><primary>перенос принтеров</primary></indexterm><indexterm><primary>управление SID </primary></indexterm> Установление междоменных доверительных отношений достигается также путем использования команды <command>net</command>, как, может быть, множество типичных административных задач, таких, как управление пользователями и группами, управление общими ресурсами и принтерами, перенос файлов и принтеров, управление идентификаторами безопасности и т.д.</para>
+
+	<para><indexterm><primary>net</primary></indexterm><indexterm><primary>man pages</primary></indexterm> Сейчас должна быть ясна общая картина: команда <command>net</command> играет главную роль на сцене Samba-3. Разработка этой роли будет продолжена. Включение этой главы - признание ее важности, которая в своей сложности выросла до той точки, когда более нельзя считать разумным решение полностью описывать ее использование в страницах справки UNIX.</para>
+
+	</sect1>
+	
+	<sect1>
+	<title>Административные задачи и методы</title>
+
+	<para><indexterm><primary>net</primary></indexterm><indexterm><primary>ADS</primary></indexterm><indexterm><primary>Distributed Computing Environment</primary><see>DCE</see></indexterm><indexterm><primary>Remote Procedure Call</primary><see>RPC</see></indexterm> Базовые операции команды <command>net</command> описаны здесь. Эта документация не исчерпывающая, а, следовательно, неполная. Поскольку основной упор сделан на переходе с серверов Windows на сервер Samba, emphasis на использовании режима работы Distributed Computing Environment Remote Procedure Call (DCE RPC). При работе с сервером-участником домена Active Directory предпочтительно (а часто необходимо) использовать режим работы ADS. Команда <command>net</command> поддерживает оба режима, но не для всех операций. Для большинства операций, если режим не указан, <command>net</command> автоматически будет переключаться между режимами <constant>ads</constant>, <constant>rpc</constant>, и <constant>rap</constant>. Пожалуйста, обратитесь к страницам руководства за более полным обзором возможностей этой утилиты.</para>
+
+	</sect1>
+
+	<sect1>
+	<title>Управление группами UNIX и Windows </title>
+
+	<para><indexterm><primary>Active Directory</primary></indexterm><indexterm><primary>net</primary><secondary>rpc</secondary></indexterm><indexterm><primary>net</primary><secondary>ads</secondary></indexterm><indexterm><primary>net</primary><secondary>rap</secondary></indexterm><indexterm><primary>RAP</primary></indexterm> Как оговорено ранее, большая часть этой главы направлена на использование семейства операций <command>net rpc</command>, поддерживаемых Samba. Большая часть из них поддерживается режимом <command>net ads</command> при использовании совместно с Active Directory. Режим работы <command>net rap</command> также поддерживается для некоторых из этих операций. Протоколы RAP используются IBM OS/2 и некоторыми ранними серверами SMB.</para>
+
+	<para><indexterm><primary>net</primary></indexterm><indexterm><primary>управление пользователями</primary></indexterm><indexterm><primary>управление группами</primary></indexterm> Команда Samba <command>net</command> имеет достаточно возможностей, чтобы выполнять все общие административные задачи из командной строки. В этом разделе рассматривается каждая из основных возможностей по управлению пользователями и группами.</para>
+
+	<para><indexterm><primary>группы</primary></indexterm><indexterm><primary>доменные</primary><secondary>группы</secondary></indexterm><indexterm><primary>локальные</primary><secondary>группы</secondary></indexterm><indexterm><primary>учетные записи пользоваетля домена</primary></indexterm> Samba-3 распознает два тип групп: <emphasis>группы домена</emphasis> и <emphasis>локальные группы</emphasis>. Группы домена могут содержать только учетные записи пользователей домена. Локальные группы могут содержать локальных пользователей, пользователей домена и группы домена.</para>
+
+	<para>Назначение локальной группы - позволить устанавливать разрешения на доступ к файлам для групповой учетной записи, которая, как обычная группа UNIX/Linux, будет сохраняться во время повторных развертываний файл-сервера Windows.</para>
+
+	<sect2>
+	<title>Добавление, переименование или удаление учетных записей групп</title>
+
+	<para>Samba предоставляет Windows-клиентам файловые службы и службы печати. Ресурсы файловой системы, которые она делает доступными Windows-окружению, должны - по необходимости - быть предоставлены в виде, который совместим с сетевым окружением Windows. Группы UNIX уничтожаются и создаются по мере нужды для обслуживания рабочих потребностей операционной системы UNIX и ее файловых систем.    </para>
+
+	<para>У Samba есть функция, посредством которой группы UNIX отображаются на логические объекты, называемые "доменные группы" (или Windows-группы). Samba поддерживает два типа групп Windows, локальные и глобальные. В глобальные группы могут входить в качестве участников глобальные пользователи. Участие в этих группах регулируется обычными способами UNIX, только при этом пользователи UNIX добавляются в группы UNIX. Учетная запись пользователя Windows состоит из ссвязи между SambaSAMAccount (логический объект) и пользовательской учетной записью UNIX. Следовательно, пользователь UNIX отображается в пользователя Windows (т.е. ему присваивается учетная запись пользователя Windows и соответствующий пароль), а группы UNIX, к которым принадлежит пользователь, отображаются в группы Windows. Врезультате в Windows-окружении учетных записей пользователь будет входить в Windows-группы посредством участия в группах UNIX.</para>
+
+	<para>Следующие подразделы, в которых описано управление группами Windows, демонстрируют отношения между учетными записями групп UNIX (и их членами) и соответствующими группами Windows. Далее показано, как члены группы UNIX автоматически передаются в группу Windows сразу после установления логического отображения. </para>
+
+	<sect3>
+	<title>Добавление или создание новой группы</title>
+
+	<para>Перед попыткой добавить учетную запись группы Windows можно просмотреть существующие группы, как показано здесь: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>group</tertiary></indexterm><indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>group list</tertiary></indexterm><screen>
+&rootprompt; net rpc group list -Uroot%not24get
+Password:
+Domain Admins
+Domain Users
+Domain Guests
+Print Operators
+Backup Operators
+Replicator
+Domain Computers
+Engineers
+</screen></para>
+
+<?latex \newpage ?>
+	<para>Учетная запись группы Windows под назавнием <quote>SupportEngrs</quote> может быть добавлена исполнением следующих команд: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>group add</tertiary></indexterm><screen>
+&rootprompt; net rpc group add "SupportEngrs" -Uroot%not24get
+</screen> Добавление приведет к мгновенной доступности новой учетной записи группы, это показано ниже: <screen>
+&rootprompt; net rpc group list -Uroot%not24get
+Password:
+Domain Admins
+Domain Users
+Domain Guests
+Print Operators
+Backup Operators
+Replicator
+Domain Computers
+Engineers
+SupportEngrs
+</screen></para>
+
+	<para><indexterm><primary>POSIX</primary></indexterm><indexterm><primary>smbldap-groupadd</primary></indexterm><indexterm><primary>getent</primary></indexterm> Здесь демонстрируется, что учетная запись группы POSIX (системная группа UNIX/Linux) была создана вызовом интерфейсного сценария <smbconfoption name="add group script">/opt/IDEALX/sbin/smbldap-groupadd -p "%g"</smbconfoption>: <screen>
+&rootprompt; getent group
+...
+Domain Admins:x:512:root
+Domain Users:x:513:jht,lct,ajt,met
+Domain Guests:x:514:
+Print Operators:x:550:
+Backup Operators:x:551:
+Replicator:x:552:
+Domain Computers:x:553:
+Engineers:x:1002:jht
+SupportEngrs:x:1003:
+</screen> Далее демонстрируется, что использование команды <command>net</command> для добавления учетной записи группы приводитк незамедлительному отображению созданной группы POSIX, на группу Windows: <indexterm><primary>net</primary><secondary>groupmap</secondary><tertiary>list</tertiary></indexterm><screen>
+&rootprompt; net groupmap list
+Domain Admins (S-1-5-21-72630-4128915-11681869-512) -&gt; Domain Admins
+Domain Users (S-1-5-21-72630-4128915-11681869-513) -&gt; Domain Users
+Domain Guests (S-1-5-21-72630-4128915-11681869-514) -&gt; Domain Guests
+Print Operators (S-1-5-21-72630-4128915-11681869-550) -&gt; Print Operators
+Backup Operators (S-1-5-21-72630-4128915-11681869-551) -&gt; Backup Operators
+Replicator (S-1-5-21-72630-4128915-11681869-552) -&gt; Replicator
+Domain Computers (S-1-5-21-72630-4128915-11681869-553) -&gt; Domain Computers
+Engineers (S-1-5-21-72630-4128915-11681869-3005) -&gt; Engineers
+SupportEngrs (S-1-5-21-72630-4128915-11681869-3007) -&gt; SupportEngrs
+</screen></para>
+
+	</sect3>
+
+	<sect3>
+	<title>Отображение групп Windows на группы UNIX</title>
+
+	<para><indexterm><primary>отображенные</primary></indexterm><indexterm><primary>группы Windows</primary></indexterm><indexterm><primary>системные группы</primary></indexterm><indexterm><primary>контроль доступа</primary></indexterm> Группы Windows должны быть отображены в системные группы UNIX (POSIX), так что контроль доступа к файловой системе может быть организован средствами и способами, подходящими для операционной системы, на которой работает сервер Samba.</para>
+
+	<para><indexterm><primary>контроль доступа</primary></indexterm><indexterm><primary>UID</primary></indexterm><indexterm><primary>GID</primary></indexterm><indexterm><primary>локальные UID</primary></indexterm> Весь контроль доступа к файловой системе (файлам и каталогам) внутри файловой системы сервера UNIX/Linux, несущей сервер Samba, выполнен с использованием UID/GID. Samba никаким способом не перекрывает или заменяем семантику файловой системы UNIX. Таким образом, необходимо, чтобы все сетевые операции Windows, которые реализуют доступ к файловой системе, предоставляли механизм, отображающий пользователя Windows на конкретную учетную запись группы UNIX/Linux. Учетная запись пользователя также должна отображаться на локально известный  UID. Заметьте, что команда <command>net</command> в этом случае не вызывает любые функции RPC, но прямиком обращается к парольной базе.</para>
+
+	<para><indexterm><primary>отображения по умолчанию</primary></indexterm><indexterm><primary>Domain Admins</primary></indexterm><indexterm><primary>Domain Users</primary></indexterm><indexterm><primary>Domain Guests</primary></indexterm><indexterm><primary>группа Windows</primary></indexterm><indexterm><primary>группа UNIX</primary></indexterm><indexterm><primary>отображение</primary></indexterm> Samba зависит от отображений по умолчанию для глобальных групп <constant>Domain Admins, Domain Users</constant>, и <constant>Domain Guests</constant>. Дополнительные группы могут быть созданы так, как показано в примере. Есть случаи, когда необходимо отобразить существущую учетную запись группы UNIX в группу Windows. Эта операция, в сущности, создает учетную запись группы Windows - как последствие создания отображения.</para>
+
+	<para><indexterm><primary>net</primary><secondary>groupmap</secondary><tertiary>modify</tertiary></indexterm><indexterm><primary>net</primary><secondary>groupmap</secondary><tertiary>add</tertiary></indexterm><indexterm><primary>net</primary><secondary>groupmap</secondary><tertiary>delete</tertiary></indexterm> Возможные операции включают: <constant>add</constant>, <constant>modify</constant> и <constant>delete</constant>. Пример каждой операции показан здесь.</para>
+
+	<note><para>Начиная с Samba-3.0.23, доменные группы Windows должны быть созданы явным образом. По умолчанию все группы UNIX предъявляются сети Windows как локальные группы Windows.</para></note>
+
+	<para>Существующая группа UNIX может быть отображена в существующую группу Windows, как в этом примере: <screen>
+&rootprompt; net groupmap modify ntgroup="Domain Users" unixgroup=users
+</screen> Существующая группа UNIX может быть отображена в новую группу Windows, как показано здесь: <screen>
+&rootprompt; net groupmap add ntgroup="EliteEngrs" unixgroup=Engineers type=d
+</screen> Поддерживаемые типы отображений - 'd' (глобальная группа домена) и 'l' (локальная группа домена). Группа Windows может быть удалена, и затем новая группа Windows может быть отображена в группу UNIX исполнением следующих команд: <screen>
+&rootprompt; net groupmap delete ntgroup=Engineers
+&rootprompt; net groupmap add ntgroup=EngineDrivers unixgroup=Engineers type=d
+</screen> Операции добавления и удаления затронули только логические сущности, известные как группы Windows, или группы домена. Эти операции инертны по отношению к системным группам UNIX, что значит - они ни удаляют, ни создают системные группы UNIX. Отображение группы UNIX на группу Windows делает группу UNIX доступной как группу Windows, так что файлам и папкам на клиентах-участниках домена - рабочих станциях и серверах - могут быть назначены списки контроля доступа из единых для всего домена пользователей и групп.</para>
+
+	<para>Могут быть созданы два типа групп Windows: <constant>доменные (глобальные) </constant> и <constant>локальные</constant>. В предыдущих примерах созданные группы имели тип <constant>доменные</constant> или глобальные. Следующая команда создаст <constant>локальную</constant> группу Windows.<screen>
+&rootprompt; net groupmap add ntgroup=Pixies unixgroup=pixies type=l
+</screen> Поддерживаются типы групп 'd' (глобальная домена) и 'l' (локальная домена), локальная группа домена рассматривается как индивидуальная для сервера Samba. Локальные группы могут использоваться Samba для включения поддержки множественных вложенных групп.</para>
+
+	</sect3>
+
+	<sect3>
+	<title>Удаление групповой учетной записи</title>
+
+	<para><indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>group delete</tertiary></indexterm> Групповая учетная запись может быть удалена исполнением следующей команды: <screen>
+&rootprompt; net rpc group delete SupportEngineers -Uroot%not24get
+</screen></para>
+
+	<para>Советуем проверять удаление. Те же команды могут быть исполнены, как показано выше.</para>
+
+	</sect3>
+
+	<sect3>
+	<title>Переименование групповых учетных записей</title>
+
+	<note><para>Эта команда не документирована в страницах руководства; она выполнена в исходном коде, но в настоящее время не работает. Приведенный пример описывает, согласно исходного кода, как она должна работать. Смотрите в заметки по релизу следующих релизов для того, чтобы увидеть, когда это может быть исправлено.</para></note>
+
+	<para>Иногда необходимо переименовать учетную запись группы. Хорошие администраторы знают, как могут причинять неудобства некоторые менеджеры, если этот простой запрос игнорируется. Следующая команда демонстрирует, как группа Windows <quote>SupportEngrs</quote> может быть переименована в <quote>CustomerSupport</quote>: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>group rename</tertiary></indexterm><screen>
+&rootprompt; net rpc group rename SupportEngrs \
+    CustomerSupport -Uroot%not24get
+</screen></para>
+
+	</sect3>
+
+	</sect2>
+
+	<sect2 id="grpmemshipchg">
+	<title>Управление участием в группах</title>
+
+	<para>Можно выполнить три операции, касающиеся участия в группах. Это (1) добавление пользователей Windows в группы Windows, (2) удаление пользователей Windows из групп Windows, и (3) просмотр списка пользователей Windows, которые входят в группу Windows.</para>
+
+	<para>Чтобы предотвратить ошибки, важно проверять участие в группах до любых попыток внести изменения. <command>getent group</command> выведет на экран участие в группах UNIX/Linux. Участники групп UNIX/Linux также видимы как участники группы Windows, если она была отображена с использованием команды <command>net groupmap</command> (смотри <link linkend="groupmapping"/>). Следующий список участия в группах UNIX/Linux показывает, что пользователь <constant>ajt</constant> является участником группы <constant>Engineers</constant>. <screen>
+&rootprompt; getent group
+...
+Domain Admins:x:512:root
+Domain Users:x:513:jht,lct,ajt,met,vlendecke
+Domain Guests:x:514:
+Print Operators:x:550:
+Backup Operators:x:551:
+Replicator:x:552:
+Domain Computers:x:553:
+Engineers:x:1000:jht,ajt
+</screen> Группы UNIX/Linux были отображены на группы Windows, как показано здесь: <screen>
+&rootprompt; net groupmap list
+Domain Admins (S-1-5-21-72630-412605-116429-512) -&gt; Domain Admins
+Domain Users (S-1-5-21-72630-412605-116429-513) -&gt; Domain Users
+Domain Guests (S-1-5-21-72630-412605-116429-514) -&gt; Domain Guests
+Print Operators (S-1-5-21-72630-412605-116429-550) -&gt; Print Operators
+Backup Operators (S-1-5-21-72630-412605-116429-551) -&gt; Backup Operators
+Replicator (S-1-5-21-72630-412605-116429-552) -&gt; Replicator
+Domain Computers (S-1-5-21-72630-412605-116429-553) -&gt; Domain Computers
+Engineers (S-1-5-21-72630-412605-116429-3001) -&gt; Engineers
+</screen></para>
+
+	<para>Предположим, что пользователь <constant>ajt</constant> уже является членом группы UNIX/Linux, и, через отображение групп, членом группы Windows, тогда попытка опять добавить эту учетную запись окончится неудачей. Это продемонстрировано здесь: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>group addmem</tertiary></indexterm><screen>
+&rootprompt; net rpc group addmem "MIDEARTH\Engineers" ajt -Uroot%not24get
+Could not add ajt to MIDEARTH\Engineers: NT_STATUS_MEMBER_IN_GROUP
+</screen> Это показывает, что отображение групп UNIX/Linux и Windows является эффективным и прозрачным.</para>
+
+	<para>Чтобы пользователя <constant>ajt</constant> можно было добавить, используя команду <command>net rpc group</command>, необходимо убрать эту учетную запись. Удаление и проверка его правильности показаны здесь: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>group delmem</tertiary></indexterm><screen>
+&rootprompt; net rpc group delmem "MIDEARTH\Engineers" ajt -Uroot%not24get
+&rootprompt; getent group Engineers
+Engineers:x:1000:jht
+&rootprompt; net rpc group members Engineers -Uroot%not24get
+MIDEARTH\jht
+</screen> В этом примере и на уровне системы UNIX/Linux группа более не содержит участника <constant>ajt</constant>. Пример выше показывает, что это касается и участия в группе Windows.</para>
+
+	<para>Теперь учетная запись снова добавляется с использованием команды <command>net rpc group</command>: <screen>
+&rootprompt; net rpc group addmem "MIDEARTH\Engineers" ajt -Uroot%not24get
+&rootprompt; getent group Engineers
+Engineers:x:1000:jht,ajt
+&rootprompt; net rpc group members Engineers -Uroot%not24get
+MIDEARTH\jht
+MIDEARTH\ajt
+</screen></para>
+
+	<para>В этом примере участники учетной записи группы Windows <constant>Domain Users</constant> проверяются использованием команды <command>net rpc group</command>. Заметьте, что содержимое группы UNIX/Linux было показано четырьмя параграфами выше. Участники (доменной) группы Windows показаны здесь:<indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>group members</tertiary></indexterm><screen>
+&rootprompt; net rpc group members "Domain Users" -Uroot%not24get
+MIDEARTH\jht
+MIDEARTH\lct
+MIDEARTH\ajt
+MIDEARTH\met
+MIDEARTH\vlendecke
+</screen> Этот экспресс-пример показывает, что имена групп Windows рассматриваются Samba (как и MS Windows) регистронезависимо: <screen>
+&rootprompt; net rpc group members "DomAiN USerS" -Uroot%not24get
+MIDEARTH\jht
+MIDEARTH\lct
+MIDEARTH\ajt
+MIDEARTH\met
+MIDEARTH\vlendecke
+</screen></para>
+
+	<note><para>Попытка указать имя группы <constant>MIDEARTH\Domain Users</constant> вместо просто <constant>Domain Users</constant> закончится неудачей. Поведение по умолчанию команды net rpc group - направлять команду на локальную машину. Группа Windows рассматривается как локальная для машины. Если необходимо опросить другую машину, ее имя можно указать  использованием параметра <constant>-S имя_сервера</constant> для команды <command>net</command>.</para></note>
+
+	</sect2>
+
+	<sect2 id="nestedgrpmgmgt">
+	<title>Поддержка вложенных групп</title>
+
+	<para>В Windows возможно (а теперь и в Samba) создавать локальные группы, которые имеют участников (содержат в себе) пользователей домена и глобальные группы домена. Создание локальной группы <constant>demo</constant> делается так: <screen>
+&rootprompt; net rpc group add demo -L -S MORDON -Uroot%not24get
+</screen> Переключатель -L значит "создавать локальную группу". Используйте -S имя_сервера, чтобы выпонять операцию на другом сервере. Параметрами аргумента -U должны быть пользователь, имеющий подходящие права на выбранной машине, и его пароль.</para>
+
+	<para>Добавление и удаление участников групп может быть сделано с использованием подкоманд <constant>addmem</constant> и <constant>delmem</constant> команды <command>net rpc group</command>. Например, добавление <quote>DOM\Domain Users</quote> в локальную группу <constant>demo</constant> можно сделать так: <screen>
+&rootprompt; net rpc group addmem demo "DOM\Domain Users" -Uroot%not24get
+</screen></para>
+
+	<para>Можно просмотреть участников группы с вложением следующим образом: <screen>
+&rootprompt; net rpc group members demo -Uroot%not24get
+DOM\Domain Users
+DOM\Engineers
+DOM\jamesf
+DOM\jht
+</screen></para>
+
+	<para>Участники группы с вложением могут быть удалены, как показано здесь:<screen>
+&rootprompt; net rpc group delmem demo "DOM\jht" -Uroot%not24get
+</screen></para>
+
+	<sect3>
+	<title>Управление вложенными группами на рабочих станциях с сервера Samba</title>
+
+	<para>Сетевые администраторы Windows часто спрашивают в списках рассылки Samba, как дать всем права администратора на своих собственных рабочих станциях. Конечно, это плохая практика,  но она широко используется для избежания жалоб пользователей. Вот как это можно сделать с PDC или BDC Samba:<indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>group addmem</tertiary></indexterm><screen>
+&rootprompt; net rpc group addmem "Administrators" "Domain Users" \
+     -S WINPC032 -Uadministrator%secret
+</screen></para>
+
+	<para>Это можно записать в сценарий, и, следовательно, это можно делать при входе пользователя на рабочей станции Windows. Вот простой пример, показывающий как это можно сделать.</para>
+
+	<procedure>
+	<title>Автоматическое добавление пользователя к группе "Опытные пользователи" рабочей станции</title>
+
+		<step><para>Создайте сценарий, показанный в <link linkend="autopoweruserscript"/>, разместите его в каталоге <filename>/etc/samba/scripts</filename>, назвав <filename>autopoweruser.sh</filename>.<indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>group addmem</tertiary></indexterm><indexterm><primary>autopoweruser.sh</primary></indexterm><indexterm><primary>/etc/samba/scripts</primary></indexterm></para></step>
+
+<example id="autopoweruserscript">
+<title>Сценарий для автоматического добавления пользователей домена к группе "Опытные пользователи" рабочей станции</title>
+<screen>
+#!/bin/bash
+
+/usr/bin/net rpc group addmem "Power Users" "DOMAIN_NAME\$1" \
+                   -UAdministrator%secret -S $2
+
+exit 0
+</screen>
+</example>
+
+		<step><para>Установите разрешения на сценарий, чтобы позволить ему запускаться как части процесса входа: <screen>
+&rootprompt; chown root:root /etc/samba/autopoweruser.sh
+&rootprompt; chmod 755 /etc/samba/autopoweruser.sh
+</screen></para></step>
+
+		<step><para>Измените файл &smb.conf; так, чтобы строфа <literal>NETLOGON</literal> содержала параметры, показанные в <link linkend="magicnetlogon">файл smb.conf с примером Netlogon</link>.</para></step>
+
+<example id="magicnetlogon">
+<title>Волшебный ресурс Netlogon</title>
+<smbconfblock>
+<smbconfsection name="[netlogon]"/>
+<smbconfoption name="comment">Общий ресурс Netlogon</smbconfoption>
+<smbconfoption name="path">/var/lib/samba/netlogon</smbconfoption>
+<smbconfoption name="root preexec">/etc/samba/scripts/autopoweruser.sh %U %m</smbconfoption>
+<smbconfoption name="read only">Да</smbconfoption>
+<smbconfoption name="guest ok">Да</smbconfoption>
+</smbconfblock>
+</example>
+
+		<step><para>Удостоверьтесь, что учетная запись администратора каждой рабочей станции Windows имеет тот же пароль, который Вы использовали в сценарии, показанном в <link linkend="magicnetlogon">файле smb.conf примера Netlogon</link></para></step>
+
+</procedure>
+
+	<para>Этот сценарий будет исполнен каждый раз, когда пользователь входит в сеть. Следовательно, каждый пользователь будет иметь права управления локальной рабочей станцией Windows. Конечно, это можно было сделать с использованием группы, в этом случае использование этой процедуры нуждается в небольшой коррекции. Ключевое исправление использования этого метода в том, что он гарантирует - все пользователи будут иметь необходимые права на своей рабочей станции.</para>
+
+	</sect3>
+
+	</sect2>
+
+	</sect1>
+
+	<sect1>
+	<title>Управление пользователями UNIX и Windows </title>
+
+	<para><indexterm><primary>учетная запись пользователя</primary></indexterm><indexterm><primary>учетная запись пользователя UNIX/Linux</primary></indexterm><indexterm><primary>UID</primary></indexterm><indexterm><primary>учетная запись POSIX</primary></indexterm><indexterm><primary>диапазон</primary></indexterm><indexterm><primary>учтеные записи пользователей Windows</primary></indexterm><indexterm><primary>winbindd</primary></indexterm><indexterm><primary>информация об учетной записи</primary></indexterm> Каждая учетная запись пользователя сети Windows должна быть транслирована в учетную запись пользователя UNIX/Linux. На самом деле единственная информация, которая требуется сереру Samba под UNIX/Linux Samba - это UID. UID доступен либо из системной учетной записи (POSIX) или из "кучи" (диапазона) номеров UID, которые выделены специально для распределения и использования учетными записями пользователя. В случае "кучи" UID для конкретного пользователя UID будет распределяться <command>winbindd</command>.</para>
+
+	<para>Несмотря на то, что это неподходящее место для обсуждения функции <smbconfoption name="username map"/>, эта функция является важным способом отображения пользователя Windows на учетную запись UNIX, имеющую другое имя. Обратитесь к страницам справки по файлу &smb.conf; за дальнейшей информацией, касающейся этой функции. Отображения имен пользователей не могут управляться использованием команды <command>net</command>.</para>
+
+	<sect2 id="sbeuseraddn">
+	<title>Добавление учетных записей</title>
+
+	<para>Синтаксис добавления учетной записи пользователя командой <command>net</command> (согласно страницам руководства) приведен здесь:<screen>
+net [&lt;метод&gt;] user ADD &lt;имя&gt; [-c контейнер] [-F флаги_пользователя] \
+    [разные опции] [цели]
+</screen> Парольучетной записи пользователя может быть установлен согласно следующему синтаксису:<screen>
+net rpc password &lt;имя_пользователя&gt; [&lt;пароль&gt;] -Uимя_администратора%пароль_администратора
+</screen></para>
+
+	<para>Ниже продемонстрировано добавление учетной записи на сервер <constant>FRODO</constant>: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>user add</tertiary></indexterm><indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>user password</tertiary></indexterm><screen>
+&rootprompt; net rpc user add jacko -S FRODO -Uroot%not24get
+Added user jacko (добавлен пользователь jacko)
+ </screen> Пароль учетной записи можно установить следующими способами (везде делается одно и то же): <screen>
+&rootprompt; net rpc password jacko f4sth0rse -S FRODO -Uroot%not24get
+&rootprompt; net rpc user password jacko f4sth0rse \
+    -S FRODO -Uroot%not24get
+</screen></para>
+
+	</sect2>
+
+	<sect2>
+	<title>Удаление учетных записей</title>
+
+	<para>Удаление пользовательской учетной записи может быть сделано следующим образом:<screen>
+net [&lt;метод&gt;] user DELETE &lt;имя&gt; [разн. парам.] [цель]
+</screen> Следующая команда удалит учетную запись пользователя <constant>jacko</constant>: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>user delete</tertiary></indexterm><screen>
+&rootprompt; net rpc user delete jacko -Uroot%not24get
+Deleted user account
+</screen></para>
+
+	</sect2>
+
+	<sect2>
+	<title>Управление учетными записями</title>
+
+	<para>В основном используются две рутинных операции с учетными записями пользователей: изменение пароля и запрос, в каких группах участвует пользователь. Операция изменения пароля показана в <link linkend="sbeuseraddn"/>.</para>
+
+	<para>Возможность опрашивать состав групп Windows может быть важной. Здесь показано, как можно исследовать удаленный сервер, чтобы выяснит, к каким группам принадлежит пользователь:<indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>user info</tertiary></indexterm><screen>
+&rootprompt; net rpc user info jacko -S SAURON -Uroot%not24get
+net rpc user info jacko -S SAURON -Uroot%not24get
+Domain Users
+Domain Admins
+Engineers
+TorridGroup
+BOP Shop
+Emergency Services
+</screen></para>
+
+	<para>Так же возможно переименовать пользовательские учетные записи: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>user rename</tertiary></indexterm>старое_имя_пользователя новое_имя_пользователя</para>
+
+	</sect2>
+
+	<sect2>
+	<title>Отображение пользователей</title>
+
+	<para><indexterm><primary>имя входа</primary></indexterm><indexterm><primary>/etc/samba/smbusers</primary></indexterm><indexterm><primary>отображение имени пользователя</primary></indexterm> В некоторых ситуациях невозможно избежать отличия имени пользователя для входа в Windows и ID входа на сервере Samba. Можно создать специальный файл на сервере Samba, который позволит имени пользователя Windows отображаться на другое имя пользователя UNIX/Linux. Файл &smb.conf; также должен быть изменен так, чтобы строфа <constant>[global]</constant> содержала параметр: <screen>
+username map = /etc/samba/smbusers
+</screen> Содержимое файла <filename>/etc/samba/smbusers</filename> показано здесь: <screen>
+parsonsw: "William Parsons"
+marygee: geeringm
+</screen> В этом примере учетная запись пользователя Windows <quote>William Parsons</quote> будет отображена на пользователя UNIX <constant>parsonsw</constant>, а учетная запись пользователя Windows <quote>geeringm</quote> будет отображена на пользователя UNIX <constant>marygee</constant>.</para>
+
+	</sect2>
+
+	</sect1>
+
+	<sect1>
+	<title>Управление правами и привилегиями пользователей</title>
+
+	<para><indexterm><primary>данные учетной записи</primary></indexterm><indexterm><primary>управлять принтерами</primary></indexterm><indexterm><primary>управлять общими ресурсами</primary></indexterm><indexterm><primary>управлять группами</primary></indexterm><indexterm><primary>управлять пользователями</primary></indexterm> Во всех версиях Samba до 3.0.11 единственной учетной записью на сервере Samba, которая могла управлять пользователями, группами, общими ресурсами, притерами и т.д. была учетная запись <constant>root</constant>. Это создавало проблемы для некоторых пользователей и было частым источником страха из-за необходимости выдавать учетные данные от самой важной в смысле безопасности учетной записи системы UNIX/Linux.</para>
+
+	<para><indexterm><primary>передача административных привилегий</primary></indexterm><indexterm><primary>обычный пользователь</primary></indexterm><indexterm><primary>права и привилегии</primary></indexterm><indexterm><primary>управление привилегиями</primary></indexterm><indexterm><primary>группы пользователей</primary></indexterm> Новой в Samba 3.0.11 является способность при необходимости передавать административные привилегии обычным пользователям либо группам пользователей. Значение административных привилегий описано в <link linkend="rights"/>. Примеры использования <command>net</command> для управления правами и привилегиями пользователей приведены в этой главе.</para>
+
+	<note><para>Когда пользовательские права и привилегии назначены корректно, больше не требуется учетная запись сети Windows для пользователя <constant>root</constant> (или любого его синонима) с UNIX UID=0. Начальные пользовательские права и привилегии могут быть назначены любой учетной записью, которая входит в группу <constant> Domain Admins</constant>. Права могут назначаться как пользовательским, так и групповым учетным записям.</para></note>
+
+	<para>По умолчанию не назначены ни права, ни привилегии. Это демонстрируется командой, показанной здесь:<screen>
+&rootprompt; net rpc rights list accounts -U root%not24get
+BUILTIN\Print Operators
+No privileges assigned
+
+BUILTIN\Account Operators
+No privileges assigned
+
+BUILTIN\Backup Operators
+No privileges assigned
+
+BUILTIN\Server Operators
+No privileges assigned
+
+BUILTIN\Administrators
+No privileges assigned
+
+Everyone
+No privileges assigned
+</screen></para>
+
+	<para>Команду <command>net</command> можно использовать для получения текущих поддерживаемых возможных прав и привилегий следующим способом: <indexterm><primary>SeMachineAccountPrivilege</primary></indexterm><indexterm><primary>SePrintOperatorPrivilege</primary></indexterm><indexterm><primary>SeAddUsersPrivilege</primary></indexterm><indexterm><primary>SeRemoteShutdownPrivilege</primary></indexterm><indexterm><primary>SeDiskOperatorPrivilege</primary></indexterm><indexterm><primary>SeBackupPrivilege</primary></indexterm><indexterm><primary>SeRestorePrivilege</primary></indexterm><indexterm><primary>SeTakeOwnershipPrivilege</primary></indexterm><indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>rights list</tertiary></indexterm><screen>
+&rootprompt; net rpc rights list -U root%not24get
+SeMachineAccountPrivilege  Add machines to domain Добавление машин к домену
+SePrintOperatorPrivilege  Manage printers Управление принтерами
+SeAddUsersPrivilege  Add users and groups to the domain Добавление пользователей и групп к домену
+SeRemoteShutdownPrivilege  Force shutdown from a remote system Удаленное завершение работы
+SeDiskOperatorPrivilege  Manage disk shares Управление дисковыми общими ресурсами 
+SeBackupPrivilege  Back up files and directories Резервное копирование файлов и каталогов
+SeRestorePrivilege  Restore files and directories Восстановление файлов и каталогов
+SeTakeOwnershipPrivilege  Take ownership of files or other objects Овладение файлами и другими объектами
+</screen> Привилегия учетной записи компьютера необходима для того, чтобы добавлять сетевого клиента Windows NT или позднее в домен. Привилегия дискового оператора необходима, чтобы позволить пользователю управлять списками контроля доступа общих ресурсов и списками контроля доступа файлов и каталогов, не принадлежащих пользователю.</para>
+
+	<para>В этом примере все права назначены группе <constant>Domain Admins</constant>. Это является хорошей идеей, поскольку от членов этой группы обычно ожидают всемогущества. Это назначение претворяет идею в реальность: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>rights grant</tertiary></indexterm><screen>
+&rootprompt; net rpc rights grant "MIDEARTH\Domain Admins" \
+    SeMachineAccountPrivilege SePrintOperatorPrivilege \
+    SeAddUsersPrivilege SeRemoteShutdownPrivilege \
+    SeDiskOperatorPrivilege  -U root%not24get
+Successfully granted rights.
+</screen> Далее доменному пользователю <constant>jht</constant> выдаются привилегии, необходимые для повседневных задач администраирования: <screen>
+&rootprompt; net rpc rights grant "MIDEARTH\jht" \
+    SeMachineAccountPrivilege SePrintOperatorPrivilege \
+    SeAddUsersPrivilege SeDiskOperatorPrivilege \
+    -U root%not24get
+Successfully granted rights.
+</screen></para>
+
+	<para>Следующим шагом выполняется проверка только что внесенных изменений: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>rights list accounts</tertiary></indexterm><screen>
+&rootprompt; net rpc rights list accounts -U root%not24get
+MIDEARTH\jht
+SeMachineAccountPrivilege
+SePrintOperatorPrivilege
+SeAddUsersPrivilege
+SeDiskOperatorPrivilege
+
+BUILTIN\Print Operators
+No privileges assigned
+
+BUILTIN\Account Operators
+No privileges assigned
+
+BUILTIN\Backup Operators
+No privileges assigned
+
+BUILTIN\Server Operators
+No privileges assigned
+
+BUILTIN\Administrators
+No privileges assigned
+
+Everyone
+No privileges assigned
+
+MIDEARTH\Domain Admins
+SeMachineAccountPrivilege
+SePrintOperatorPrivilege
+SeAddUsersPrivilege
+SeRemoteShutdownPrivilege
+SeDiskOperatorPrivilege
+</screen></para>
+
+	</sect1>
+
+	<sect1>
+	<title>Управление отношениями доверия</title>
+
+	<para>В сущности, существует два типа доверительных отношений: первый - между контроллерами домена и его участниками (сетевыми клиентами), второй - между доменами (называемый междоменными доверительными отношениями). Все серверы Samba, которые участвуют в безопасности домена, нуждаются в учетной записи доверия безопасности домена, так же, как и рабочие станции Windows NT/200x/XP.</para>
+
+	<sect2>
+	<title>Управление учетными записями доверия</title>
+
+	<para>Команда net читает файл &smb.conf; для получения своих собственных настроек. Таким образом, следующая команда "знает", к какому домену присоединяться, из файла  &smb.conf;.</para>
+
+	<para>Доверительная учетная запись сервера в домене может быть проверена так, как показано в примере: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>testjoin</tertiary></indexterm><screen>
+&rootprompt; net rpc testjoin
+Join to 'MIDEARTH' is OK
+</screen> Если учетная запись участника домена отсутствует, либо учетные данные записи не верны, будет наблюдаться следующий результат: <screen>
+net rpc testjoin -S DOLPHIN
+Join to domain 'WORLDOCEAN' is not valid
+</screen></para>
+
+	<para>Эквивалентная команда для присоединения сервера Samba к домену Windows ADS показана здесь: <indexterm><primary>net</primary><secondary>ads</secondary><tertiary>testjoin</tertiary></indexterm><screen>
+&rootprompt; net ads testjoin
+Using short domain name -- TAKEAWAY
+Joined 'LEMONADE' to realm 'TAKEAWAY.BIZ'
+</screen> В случае, если доверительные отношения ADS не были установлены, или по какой-то причине разорваны, можно наблюдать следующее сообщение об ошибке: <screen>
+&rootprompt; net ads testjoin -UAdministrator%secret
+Join to domain is not valid
+</screen></para>
+
+	<para>Ниже продемонстрирован процесс создания учетной записи машины в целевом домене для сервера Samba, на котором исполняется команда: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>join</tertiary></indexterm><screen>
+&rootprompt; net rpc join -S FRODO -Uroot%not24get
+Joined domain MIDEARTH.
+</screen> Присоединение сервера Samba к домену Samba приводит к созданию учетной записи компьютера. Ниже показан пример этого: <screen>
+&rootprompt; pdbedit -Lw merlin\$
+merlin$:1009:9B4489D6B90461FD6A3EC3AB96147E16:\
+176D8C554E99914BDF3407DEA2231D80:[S          ]:LCT-42891919:
+</screen> Буква S в квадратных скобках означает, что это учетная запись сервера (PDC/BDC). Компьютер к домену можно присоединить и как рабочую станцию, в этом случае S будет заменена на W (workstation). Для этого нужно исполнить следующую команду: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>join member</tertiary></indexterm><screen>
+&rootprompt; net rpc join member -S FRODO -Uroot%not24get
+Joined domain MIDEARTH.
+</screen> Заметьте, что параметр командной строки <constant>member</constant> отличает это присоединение к домену от предыдущего. По умолчанию тип выводится из конфигурации файла &smb.conf;. Для того, чтобы явно указать присоединение PDC или BDC, в командной строке нужно указать параметр <constant>[PDC | BDC]</constant>. Например: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>join bdc</tertiary></indexterm><screen>
+&rootprompt; net rpc join bdc -S FRODO -Uroot%not24get
+Joined domain MIDEARTH.
+</screen> Лучше всего позволить Samba выяснить тип присоединения к домену из настроек в файле &smb.conf;.</para>
+
+	<para>Команда для присоединения сервера Samba к домену Windows ADS показана тут: <indexterm><primary>net</primary><secondary>ads</secondary><tertiary>join</tertiary></indexterm><screen>
+&rootprompt; net ads join -UAdministrator%not24get
+Using short domain name -- GDANSK
+Joined 'FRANDIMITZ' to realm 'GDANSK.ABMAS.BIZ'
+</screen></para>
+
+	<para>Не существует специальной опции для удаления учетной записи компьютера из домена NT4. Когда компьютер с Windows, участующий в домене, удаляется из него, учетная запись участника домена не удаляется автоматически. Учетные записи неактивных уачстников домена можно удалить, используя любой удобный инструмент. Если необходимо, учетную запись компьютера можно убрать следующей командой <command>net</command>:<indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>user delete</tertiary></indexterm><screen>
+&rootprompt; net rpc user delete HERRING\$ -Uroot%not24get
+Deleted user account.
+</screen> Удаление возможно потому, что учетные записи компьютеров точно такие же, как и учетные записи пользователей, только с завершающим знаком "$" на конце. Операции управления учетными записями рассматривают учетные записи пользователей и компьютеров в схожей манере.</para>
+
+	<para>Сервер Samba-3, являющийся участником домена Windows ADS для выхода из домена может выполнить следующую команду: <indexterm><primary>net</primary><secondary>ads</secondary><tertiary>leave</tertiary></indexterm><screen>
+&rootprompt; net ads leave
+</screen></para>
+
+	<para>Подробная информация, касающаяся домена ADS, может быть получена сервером-участником домена Samba исполнением следующей команды: <indexterm><primary>net</primary><secondary>ads</secondary><tertiary>status</tertiary></indexterm><screen>
+&rootprompt; net ads status
+</screen> Объем информации исчерпывающий. Пожалуйста, обратитесь к книге <quote>Samba-3 by Example</quote>, Глава 7 для подробной информации, касающейся ее использования. Эта книга может быть получена в печатной или электронной форме по ссылке <ulink url="http://www.samba.org/samba/docs/Samba3-ByExample.pdf">Samba-3 by Example</ulink>.</para>
+
+	</sect2>
+
+	<sect2>
+	<title>Междоменное доверие</title>
+
+	<para>Междоменные доверительные отношения составляют первичный механизм, благодаря которому пользователи одного домена могут получать права доступа и привилегии в другом домене.</para>
+
+	<para>Чтобы выяснить, какие отношения доверия действуют, исполните такую команду: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>trustdom list</tertiary></indexterm><screen>
+&rootprompt; net rpc trustdom list -Uroot%not24get
+Trusted domains list:
+
+none
+
+Trusting domains list:
+
+none
+</screen> Сейчас нет междоменного доверия; следующие шаги создадут его.</para>
+
+	<para>Необходимо создать учетную запись доверия в локальном домене. Контроллер домена во втором домене может создать доверительное соединение с этой учетной записью. Это значит, что второму домену доверяется доступ к ресурсам локального домена. Вот какой командой создается локальная учетная запись доверительных отношений:<indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>trustdom add</tertiary></indexterm><screen>
+&rootprompt; net rpc trustdom add DAMNATION f00db4r -Uroot%not24get
+</screen> Эта учетная запись может быть просмотрена командой <command>pdbedit</command>, как показано здесь: <screen>
+&rootprompt; pdbedit -Lw DAMNATION\$
+DAMNATION$:1016:9AC1F121DF897688AAD3B435B51404EE: \
+7F845808B91BB9F7FEF44B247D9DC9A6:[I         ]:LCT-428934B1:
+</screen> Учетная запись доверительных отношений всегда будет иметь I внутри квадратных скобок.</para>
+
+	<para>Если невозможно соединиться с доверяемым доменом, следующая команда завершится с ошибкой: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>trustdom list</tertiary></indexterm><screen>
+ &rootprompt; net rpc trustdom list -Uroot%not24get
+Trusted domains list:
+
+none
+
+Trusting domains list:
+
+DAMNATION           S-1-5-21-1385457007-882775198-1210191635
+</screen> Вышеуказанная команда завершилась успешно; неудача отображается следующим ответом: <screen>
+net rpc trustdom list -Uroot%not24get
+Trusted domains list:
+
+DAMNATION           S-1-5-21-1385457007-882775198-1210191635
+
+Trusting domains list:
+
+DAMNATION           domain controller is not responding
+</screen></para>
+
+	<para>Если в удаленном домене была создана учетная запись доверия, Samba может установить доверие (соединиться с) удаленной учетной записью. В процессе создается одностороннее доверие к ресурсам удаленного домена. Эта команда достигает своей цели присоединением к отношениям доверия: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>trustdom establish</tertiary></indexterm><screen>
+&rootprompt; net rpc trustdom establish DAMNATION
+Password: xxxxxxx	== f00db4r
+Could not connect to server TRANSGRESSION
+Trust to domain DAMNATION established
+</screen> Теперь возможна проверка двухстороннего доверия, установленного сейчас: <screen>
+&rootprompt; net rpc trustdom list -Uroot%not24get
+Trusted domains list:
+
+DAMNATION           S-1-5-21-1385457007-882775198-1210191635
+
+Trusting domains list:
+
+DAMNATION           S-1-5-21-1385457007-882775198-1210191635
+</screen></para>
+
+	<para>Иногда необходимо лишить локальных пользователей доступа к удаленному домену. Доверительное соединение может быть отозвано, как показано здесь: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>trustdom revoke</tertiary></indexterm><screen>
+&rootprompt; net rpc trustdom revoke DAMNATION -Uroot%not24get
+</screen> Иногда необходимо лишить пользователей удаленного домена доступа к ресурсам локального домена. Это сделает команда, показанная здесь: <screen>
+&rootprompt; net rpc trustdom del DAMNATION -Uroot%not24get
+</screen></para>
+
+	</sect2>
+
+	</sect1>
+
+	<sect1>
+	<title>Управление идентификаторами безопасности (SID'ами)</title>
+
+	<para><indexterm><primary>идентификатор безопасности</primary></indexterm><indexterm><primary>SID</primary></indexterm><indexterm><primary>профили пользователей</primary></indexterm><indexterm><primary>user encoded</primary></indexterm><indexterm><primary>SID группы</primary></indexterm> Основной идентификатор безопасности, который используется всеми сетевыми операциями WIndows - идентификатор безопасности Windows (SID). Все сетевые машины Windows (серверы и рабочие станции), пользователи и группы определяются по своим SID. Все профили пользователей также закодированы SID'ом пользователя и группы, которые специфичны касательно SID'а домена, к которому принадлежит пользователь.</para>
+
+	<para><indexterm><primary>SID машины</primary></indexterm><indexterm><primary>SID домена</primary></indexterm><indexterm><primary>SID</primary></indexterm><indexterm><primary>повторный вход</primary></indexterm> По-настоящему мудро - хранить SID машины и/или домена в файле для целей резервирования. Почему? Потому что смена имени компьютера или домена (рабочей группы) может повлечь за собой изменение SID. Когда SID у Вас под руками, восстановить его - пара пустяков. Альтернатива - перенести боль восстановления пользовательских профилей и, возможно, повторного подключения всех машин к домену.</para>
+
+	<para>Перво-наперво не забудьте сохранить локальный SID в файле. Хорошая идея - поместить его в тот же каталог, что и файл &smb.conf;. Вот как можно просто это сделать: <indexterm><primary>net</primary><secondary>getlocalsid</secondary></indexterm><screen>
+&rootprompt; net getlocalsid &gt; /etc/samba/my-sid
+</screen> Замечательно, теперь есть безопасная копия локального SID'а. На PDC/BDC это является также SID'ом домена. </para>
+
+	<para>Следующая команда расследует, что же необходимо поместить в файл <filename>мой-sid</filename>: <screen>
+&rootprompt; net getlocalsid
+SID for domain MERLIN is: S-1-5-21-726309263-4128913605-1168186429
+</screen></para>
+
+	<para>Если когда-либо понадобится восстановить SID, который был сохранен в файле <filename>my-sid</filename>, просто скопируйте SID (строку символов, которые начинаются с <constant>S-1-5-21</constant>) в командную строку, показанную здесь:<indexterm><primary>net</primary><secondary>setlocalsid</secondary></indexterm><screen>
+&rootprompt; net setlocalsid S-1-5-21-1385457007-882775198-1210191635
+</screen> Восстановление локального SID является простой операцией, однако отутствие резервной копии может быть большой проблемой.</para>
+
+	<para>Следующая операция употребима только для машин, которые настраиваются как PDC или BDC. Серверы-участники домена и клиенты-рабочие станции должны иметь свой собственный SID, чтобы предотвратить любой конфликт пространства имен. Вот способ синхронизации SID'а BDC с SID'ом PDC (это также существующая по умолчанию практика домена NT4): <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>getsid</tertiary></indexterm><screen>
+&rootprompt; net rpc getsid -S FRODO -Uroot%not24get
+Storing SID S-1-5-21-726309263-4128913605-1168186429 \
+    for Domain MIDEARTH in secrets.tdb
+</screen> Обычно не требуется указывать сервер-цель (-S FRODO) или данные учетной записи адмнистратора (-Uroot%not24get).</para>
+
+	</sect1>
+	
+	<sect1>
+	<title>Управление общими ресурсами</title>
+
+	<para>Управление общими ресурсами является центральным во всех операциях с файлами на сервере</para>
+
+	<itemizedlist>
+		<listitem><para>Создание/изменение/удаление общих ресурсов</para></listitem>
+		<listitem><para>Установка/изменение списков контроля доступа (ACL) на общих ресурсах</para></listitem>
+		<listitem><para>Перемещение общих ресурсов с одного сервера на другой</para></listitem>
+		<listitem><para>Изменение разрешений, содержащихся в общем ресурсе</para></listitem>
+	</itemizedlist>
+
+	<para>Каждый из них обсуждается здесь только постольку, поскольку он вовлекает использование команды <command>net</command>. Операции вне этой команды описываются в остальных частях этого документа.</para>
+
+	<sect2>
+	<title>Создание, изменение и удаление общих ресурсов</title>
+
+	<para>Общий ресурс может быть добавлен использованием возможностей команды <command>net rpc share</command>. Машина-цель может быть как локальная, так и удаленная - указывается опцией -S. Необходимо отметить, что добавление и удаление ресурсов с использованием этого инструмента зависит от доступности соответствующего интерфейсного сценария. Интерфейсные сценарии, которые использует <command>smbd</command>, называются <smbconfoption name="add share command"/>, <smbconfoption name="delete share command"/> и <smbconfoption name="change share command"/>. Набор сценариев-примеров поставляется в тарболе с исходным кодом Samba в каталоге <filename>~samba/examples/scripts</filename>.</para>
+
+	<para>Следующие шаги демонстрируют использование возможностей по управлению общими ресурсами команды <command>net</command>. Сначала добавляется общий ресурс <constant>Bulge</constant>. В файловой системе это каталог <filename>/data</filename>. Команда, которую можно выполнить для добавления этого общего ресурса, показана здесь: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>share add</tertiary></indexterm><screen>
+&rootprompt; net rpc share add Bulge=/data -S MERLIN -Uroot%not24get
+</screen> Проверка является важным процессом, и, исполнив команду <command>net rpc share</command> без операндов, можно получить список доступных общих ресурсов, как показано здесь: <screen>
+&rootprompt; net rpc share -S MERLIN -Uroot%not24get
+profdata
+archive
+Bulge   &lt;--- Этот был добавлен
+print$
+netlogon
+profiles
+IPC$
+kyocera
+ADMIN$
+</screen></para>
+
+	<para>Часто необходимо, чтобы общий ресурс можно было удалить, используя командную строку. Следующий шаг позволит удалить ранее добавленный общий ресурс:<indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>share delete</tertiary></indexterm><screen>
+&rootprompt; net rpc share delete Bulge -S MERLIN -Uroot%not24get
+</screen> Простая проверка, приведенная ниже, показывает, что общий ресур был удален: <screen>
+&rootprompt; net rpc share -S MERLIN -Uroot%not24get
+profdata
+archive
+print$
+netlogon
+profiles
+IPC$
+ADMIN$
+kyocera
+</screen></para>
+
+	</sect2>
+
+	<sect2>
+	<title>Создание и изменение спсиков контроля доступа общих ресурсов (ACL)</title>
+
+	<para>В настоящее время команда <command>net</command> не может быть использована для управления списками контроля доступа общих ресурсов Samba. На языке MS Windows это называется разрешениями общего ресурса.</para>
+
+	<para>На общих ресурсах Samba можно устанавливать списки контроля доступа (ACL) с использованием либо SRVTOOLS NT4 Domain Server Manager, либо с использованием консоли MMC "Управление компьютером". Ни один из этих способов не описывается здесь. Вместо этого смотрите <link linkend="AccessControls"/>.</para>
+
+	</sect2>
+
+	<sect2>
+	<title>Общие ресурсы, каталог и перенос файлов.</title>
+
+	<para><indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>vampire</tertiary></indexterm> Общие ресурсы могут быть перенесены так же, как и учетные записи пользователей, компьютеров и групп. Так же можно сохранить списки контроля доступа (ACL'ы), так же, как и настройки безопасности во время процесса переноса. Для переноса учетных записей из домена Windows NT4 (или более позднего) на сервер Samba используется функция <command>net rpc vampire</command>. Этот процесс сохраняет пароли и настройки безопасности учетной записи, и является необходимым компонентом для переноса общих ресурсов и файлов.</para>
+
+	<para>Команда <command>net rpc share</command>  может использоваться для переноса общих ресурсов, каталогов, файлов и других значимых данных с сервера Windows на сервер Samba.</para>
+
+	<para>Набор ключей командной строки позволяет практически прямое клонирование файл-серверов Windows. Например, при переносе файл-сервера, списки контроля доступа (ACLы) и файловые аттрибуты DOS с сервера Windows могут быть включены в процесс миграции, и вновь появятся, практически в идентичном виде, на сервере Samba после завершения миграции.</para>
+
+	<para>Процесс переноса может быть завершен только тогда, когда сервер Samba уже полностью работает. Учетные записи пользователей и групп должны переноситься до попытки переноса общих ресурсов с данными, файлов и принтеров. Перенос файлов и настроек принтеров вовлекает в использование сервисы как SMB, так и MS DCE RPC. Положительная сторона способа, которым выполняется перенос - существующая в настоящее время возможность использования сервера Samba в качестве "человека посередине", который влияет на перенос данных от одного сервера к другому. Например, если сервер Samba называется MESSER, а исходный сервер Windows NT4 называется PEPPY, и целевой сервер Samba - GONZALES, машина MESSER может использоваться для влияния на перенос всех данных  (файлов и общих ресурсов) с PEPPY на gonzales. Если не указана целевая машина, по умолчанию принимается локальный сервер (общее "правило большого пальца" команды net).</para>
+
+	<para>Успех переноса сервера нуждается в тесном понимании структуры исходного сервера (или домена), так же, как и процессов, от которых критически зависит перенос.</para>
+
+	<para>Существует два известных ограничения процесса переноса:</para>
+
+	<orderedlist>
+		<listitem><para>Команде <command>net</command> необходимо, чтобы указанные учетные данные пользователя существовали и на машине-источнике, и на машине-назначении переноса.</para></listitem>
+
+		<listitem><para>Настройки принтера могут быть перенесены не полностью или некорректно. Это, в частности, случается при переносе сервера печати Windows 2003 на Samba.</para></listitem>
+	</orderedlist>
+
+	<sect3>
+	<title>Перенос общего ресурса</title>
+
+	<para>Команда <command>net rpc share migrate</command> выполняет перенос простых строф с ресурсами. Строфа содержит параметры, которые определяют общий файловый ресурс или ресурс печати. Использование этого метода переноса создаст строфы ресурсов, параметры которых содержат путь к каталогу в файловой системе, дополнительное описание и простые настройки безопасности, которые разрешают доступ на запись к файлам. Один из первых шагов, обязательно следующих за переносом - просмотр строф общих ресурсов, чтобы увериться в пригодности настроек для использования.</para>
+
+	<para>Общие ресурсы создаются "на лету" в ходе процесса переноса. Приложение <command>smbd</command> делает это, вызывая операционную систему для исполнения сценария, указанного параметром &smb.conf; <parameter>add share command</parameter>.</para>
+
+	<para>В каталоге <filename>$SAMBA_SOURCES/examples/scripts</filename> существует пример подходящего сценария для <parameter>add share command</parameter>. Необходимо отметить, что учетная запись, которая используется для выполнения переноса, должна иметь необходимые привилегии доступа к файловой системе, и иметь права на создание общих ресурсов и установку списков контроля доступа на них. Эти права обеспечиваются следующими правами: <parameter>SeAddUsersPrivilege</parameter> и <parameter>SeDiskOperatorPrivilege</parameter>. За дальнейшей информацией, касающейся прав и привилегий, пожалуйста, обратитесь к <link linkend="rights"/>.</para>
+
+	<para>Синтаксис команды переноса общих ресуров показан здесь: <screen>
+net rpc share MIGRATE SHARES &lt;имя_ресурса&gt; -S &lt;источник&gt;
+        [--destination=назначение] [--exclude=имя_ресурса1,имя_ресурса2] [-v]
+</screen> Если параметр &lt;имя_ресурса&gt; опущен, будут перенесены все общие ресурсы. Потенциально большой список доступных общих ресурсов на системе, с которой выполняется перенос, может быть ограничен переключателем <parameter>--exclude</parameter>. Например: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>share migrate</tertiary></indexterm><screen>
+&rootprompt; net rpc share migrate shares мойресурс\
+         -S win2k -U administrator%secret"
+</screen> Это перенесет общий ресурс <constant>мойресурс</constant> с сервера <constant>win2k</constant> на сервер Samba с использованием разрешений, которые связаны с учетной записью <constant>administrator</constant> и паролем <constant>secret</constant>. Учетная запись, которая используется, должна быть одной и той же на сервере - источнике переноса и на его цели. Использование <command>net rpc vampire</command> до попытки переноса общих ресурсов обеспечит идентичность учетных записей на обоих системах. Одна из предосторожностей, которые стоит принять перед началом переноса общих ресурсов - проверка того, что пернесенные учетные записи (на сервере Samba) имеют необходимые права и привилегии. Это можно сделать так, как показано здесь: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>right list accounts</tertiary></indexterm><screen>
+&rootprompt; net rpc right list accounts -Uroot%not24get
+</screen> Итак, предпринятые до сих пор шаги выполняют только перенос общих ресурсов. Каталоги и содержимое каталогов не переносится в ходе действий, выполненных до сих пор.</para>
+
+	</sect3>
+
+	<sect3>
+	<title>Перенос файлов и папок</title>
+
+	<para>Все, описанное до этой точки, было сделано в качестве приготовления к переносу каталогов и файлов с данными. Для многих людей приготовление является потенциально скучным, и настоящее возбуждение начинается только тогда, когда можно использовать файлы с данными. Следующие шаги демонстрируют технику, которую можно использовать для переноса файлов с данными с использованием команды <command>net</command>.</para>
+
+	<para>Передача файлов с одного сервера на другой всегда была вызовом для администраторов MS Windows, поскольку серверы Windows NT и 200x не всегда имеют необходимые инструменты. Команда <command>xcopy</command> Windows NT не способна сохранять списки контроля доступа, это делается только на Windows 200x. Microsoft предоставляет утилиту, которая может скопировать ACL (настройки безопасности), называемую <command>scopy</command>, но она предоставляется только как часть Windows NT или 200X Server Resource Kit. </para>
+
+	<para>Существует несколько инструментов, как бесплатных, так и коммерческих, которые можно использовать для копирования файлов и каталогов сервера Windows с полным сохранением установок безопасности. Один из лучших бесплатных инструментов называется <command>robocopy</command>.</para>
+
+	<para>Утилита <command>net</command> может быть использована для копирования файлов и каталогов с полным сохранением списков контроля доступа, так же как и DOS-атрибутов файлов. Заметьте, что включение списков контроля доступа имеет смысл только тогда, когда система-приемник будет работать в том же контексте безопасности, что и система-источник. Это относится и к серверам-участникам домена, и к контроллерам домена, которые получаются в результате перенесенного (в оригинале -"vampired" - прим. перев.) домена. До переноса файлов и каталогов должны существовать все общие ресурсы.</para>
+
+	<para>Синтаксис команд переноса показан здесь: <screen>
+net rpc share MIGRATE FILES &lt;имя_ресурса&gt; -S &lt;источник&gt;
+    [--destination=назначение] [--exclude=ресурс1,ресурс2]
+    [--acls] [--attrs] [--timestamps] [-v]
+</screen> Если параметр &lt;имя_ресурса&gt; опущен, будут перенесены все ресурсы. Потенциально большой список ресурсов системы-источника может быть ограничен использованием параметра <parameter>--exclude</parameter>.</para>
+
+	<para>Если необходимо сохранить все ACL файлов, необходимо добавить к вышеуказанной командной строке переключатель <parameter>--acls</parameter>. Оригинальные метки времени файлов могут быть сохранены указанием переключателя <parameter>--timestamps</parameter>, а файловые атрибуты DOS (т.е. скрытый, архивный и т.д.) можно сохранить указанием параметра <parameter>--attrs</parameter>.</para>
+
+	<note><para>Способность сохранять списки контроля доступа зависит от соответствующей поддержки для них, так же, как и от общей семантики файловой системы ОС целевого сервера. Перенос с одного сервера Windows на другой полностью сохранит все аттрибуты файлов. Из-за сложности отображения ACL Windows в систему поддержки ACL Posix возможен неполный перенос ACL Windows на сервер Samba.</para></note>
+
+	<para>Списки контроля доступа, полученные в результате на сервере Samba, скорее всего, не будут соответствовать исходным списикам. Windows поддерживает файлы, которыми владеют только группы. Только групповое владение файлом не поддерживается под UNIX/Linux. Ошибок в переносе таких файлов можно избежать, используя параметр &smb.conf; file <smbconfoption name="force unknown acl user">yes</smbconfoption>. Эта возможность автоматически преобразует файлы, которыми владеют только группы, в корректные файлы, которыми владеют пользователи, на сервере Samba.</para>
+
+	<para>Пример переноса всех файлов с машины <constant>nt4box</constant> на сервер Samba, с которого управляется перенос, приведен ниже:<indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>share migrate files</tertiary></indexterm><screen>
+&rootprompt; net rpc share migrate files -S nt4box --acls \
+    --attrs -U administrator%secret
+</screen></para>
+
+	<para>Эта команда перенесет все файлы и каталоги со всех файловых общих ресурсов на сервере Windows по имени <constant>nt4box</constant> на сервер Samba, с которого запущен перенос. Файлы, владельцами которых являются группы, будут принадлежать учетной записи пользователя по имени <constant>administrator</constant>.</para>
+
+	</sect3>
+	
+	<sect3>
+	<title>Перенос списков ACL общего ресурса</title>
+	<para>Есть возможность иметь такие списки контроля доступа общего ресурса, которые не позволят Вам (даже как администратору) скопировать любые файлы и каталоги на эти общие ресурсы. Таким образом, перенос списков контроля доступа общего ресурса был выделен в отдельную функцию: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>share migrate security</tertiary></indexterm><screen>
+&rootprompt; net rpc share migrate security -S nt4box -U administrator%secret
+</screen></para>
+
+	<para>Эта команда только скопирует списки доступа каждого общего ресурса компьютера nt4box на Вашу локальную машину samba-system. </para>
+	</sect3>
+
+	<sect3>
+	<title>Одновременный перенос общих ресурсов и файлов</title>
+
+	<para>Режим работы, показанный здесь, всего лишь комбинация трех предыдущих. Сначала переносятся определения ресурсов, затем все общие файлы, и в конце списки контроля доступа: <screen>
+net rpc share MIGRATE ALL &lt;имя_ресурса&gt; -S &lt;источник&gt;
+    [--exclude=share1, share2] [--acls] [--attrs] [--timestamps] [-v]
+</screen></para>
+
+	<para>Пример одновременного переноса показан здесь:<indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>share migrate all</tertiary></indexterm><screen>
+&rootprompt; net rpc share migrate all -S w2k3server -U administrator%secret
+</screen> Это генерирует полную копию сервера <parameter>w2k3server</parameter>.</para>
+
+	</sect3>
+
+	</sect2>
+
+	<sect2>
+	<title>Перенос принтеров</title>
+
+	<para>Установка нового сервера, так же, как и переход в новое сетевое окружение, часто схожа со строительством дома; прогресс идет очень быстро от закладки фундамента до этапа, когда дом сдается "под ключ", но окончание работ, кажется, занимает все больше и больше времени по мере того, как здание подходит к завершения.</para>
+
+	<para>Потребности в печати широко варьируют в зависимости от сетевой среды, и могут быть очень простые либо сложные. Если потребности очень просты, лучшее решение для реализации поддержки печати - переустановка всего с нуля вместо переноса старых настроек. С другой  стороны, для сложной сети, объединяющей многие заграничные офисы и множество местных офисов, каждый из которых является запутанным лабиринтом возможностей печати, возможность переноса всех настроек принтеров является преимуществом. Повторное ручное восстановление сложной сети печати  займет много времени и сил. Часто будет невозможно найти драйвер, который используется в настоящее время, что влечет за собой установку нового драйвера. Новые драйверы часто имеют функции печати, которые повлекут за собой изменения в использовании принтера. Кроме того, при очень сложных настройках печати становится практически невозможным повторно создать то же окружение &smbmdash; вне зависимости от того, насколько хорошо оно было описано.</para>
+
+	<para>Перенос существующей архитектуры печати вовлекает в себя следующее:</para>
+
+	<itemizedlist>
+		<listitem><para>Установка очередей печати. </para></listitem>
+
+		<listitem><para>Установка драйверов принтера (для сервера печати и клиентов Windows).</para></listitem>
+
+		<listitem><para>Настройка форматов печати. </para></listitem>
+
+		<listitem><para>Выполнение настроек безопасности.</para></listitem>
+
+		<listitem><para>Установка настроек принтера.</para></listitem>
+	</itemizedlist>
+
+	<para>Утилита <command>net</command> Samba позволяет делать перенос принтеров с одного сервера печати Windows на другой. Когда этот инструмент используется для переноса принтеров на сервер Samba <command>smbd</command>, приложение, которое получает сетевые запросы на создание необходимых сервисов должно вызвать операционную систему для создания нижележащих принтеров. Вызов выполняется посредством интерфейсного сценария, который может быть указан в параметре файла &smb.conf; <smbconfoption id="add printer script"/>. Этот сценарий важен для процесса переноса. Подходящий сценарий-пример может быть получен в каталоге<filename>$SAMBA_SOURCES/examples/scripts</filename>. Заметьте, что этот сценарий должен быть настроен, чтобы подходить к окружению операционной системы и использовать ее инструменты для создания очереди печати.</para>
+
+	<para>Каждый из компонентов (переноса - прим. перев.), перечисленных выше, может быть выполнен отдельно или как часть автоматической операции. Многие сетевые администраторы предпочитают работать с вопросами переноса так, чтобы иметь максимальный контроль - в частности, если что-то пойдет не так. Далее кратко описан синтаксис каждой операции.</para>
+
+	<para>Далее показан перенос принтеров с сервера печати Windows (NT4 или 200x).  Следующая инструкция создает ресурс печати вместе с нижележащей очередью печати: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>printer migrate printers</tertiary></indexterm><screen>
+net rpc printer MIGRATE PRINTERS [printer] [misc. options] [targets]
+</screen> Драйвера печати могут быть перенесены с сервера печати Windows на сервер Samba с использованием следующей инструкции командной строки: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>printer migrate drivers</tertiary></indexterm><screen>
+net rpc printer MIGRATE DRIVERS [printer] [misc. options] [targets]
+</screen> Формы принтера могут быть перенесены следующей операцией: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>printer migrate forms</tertiary></indexterm><screen>
+net rpc printer MIGRATE FORMS [printer] [misc. options] [targets]
+</screen> Настройки безопасности принтера (списки контроля доступа) можно перенести с сервера Windows на сервер Samba использованием следующей команды: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>printer migrate security</tertiary></indexterm><screen>
+net rpc printer MIGRATE SECURITY [printer] [misc. options] [targets]
+</screen> Настройки принтера включают в себя такие вещи, как размер бумаги и ее ориентация. Их можно перенести с сервера печати Windows на сервер Samba следующей командой: <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>printer migrate settings</tertiary></indexterm><screen>
+net rpc printer MIGRATE SETTINGS [printer] [misc. options] [targets]
+</screen></para>
+
+	<para>Перенос принтеров, включая вышеупомнутый набор информации, может быть совершен одной командой со следующ им синтаксисом: <screen>
+net rpc printer MIGRATE ALL [принтер] [разные_опции] [куда_перенести]
+</screen></para>
+
+	</sect2>
+
+	</sect1>
+
+	<sect1>
+	<title>Контроль открытых файлов</title>
+
+	<para>Страницы руководства описывают набор функций <command>net file</command>, которые предоставляют инструменты для закрытия открытых файлов с помощью вызовов функций либо RAP, либо RPC. Пожалуйста, обратитесь к страницам руководства для конкретной информации по использованию.</para>
+
+	</sect1>
+
+	<sect1>
+	<title>Управление сессиями и соединениями</title>
+
+	<para>Интерфейс управления сессиями команды <command>net session</command> использует старый метод RAP для получения списка соединений с сервером Samba, как показано здесь: <indexterm><primary>net</primary><secondary>rap</secondary><tertiary>session</tertiary></indexterm><screen>
+&rootprompt; net rap session -S MERLIN -Uroot%not24get
+Computer             User name            Client Type        Opens Idle time
+------------------------------------------------------------------------------
+\\merlin             root                 Unknown Client         0 00:00:00
+\\marvel             jht                  Unknown Client         0 00:00:00
+\\maggot             jht                  Unknown Client         0 00:00:00
+\\marvel             jht                  Unknown Client         0 00:00:00
+</screen></para>
+
+	<para>Сессия может быть закрыта исполнением команды, как показано здесь: <screen>
+&rootprompt; net rap session close marvel -Uroot%not24get
+</screen></para>
+
+	</sect1>
+
+	<sect1>
+	<title>Принтеры и ADS</title>
+
+	<para>Когда Samba-3 используется в окружении MS Windows ADS, общие принтеры Samba не будут доступны для просмотра, пока они не опубликованы в домене ADS. Информация, касающаяся опубликованных принтеров, может быть получена с сервера ADS выполнением команды <command>net ads print info</command> со следующим синтаксисом: <indexterm><primary>net</primary><secondary>ads</secondary><tertiary>printer info</tertiary></indexterm><screen>
+net ads printer info &lt;имя_принтера&gt; &lt;имя_сервера&gt; -Uadministrator%secret
+</screen> Если вместо имени принтера использовать звездочку (*), результатом будет список принтеров.</para>
+
+	<para>Чтобы опубликовать (сделать доступным) принтер в ADS, исполните следующую команду: <indexterm><primary>net</primary><secondary>ads</secondary><tertiary>printer publish</tertiary></indexterm><screen>
+net ads printer publish &lt;printer_name&gt; -Uadministrator%secret
+</screen> Она опубликует принтер локального сервера Samba в ADS.</para>
+
+	<para>Удаление принтера Samba из ADS достигается исполнением следующей команды: <indexterm><primary>net</primary><secondary>ads</secondary><tertiary>printer remove</tertiary></indexterm><screen>
+net ads printer remove &lt;имя_принтера&gt; -Uadministrator%пароль
+</screen></para>
+
+	<para>Чтобы обнаружить принтеры по всему домену ADS, можно выполнить общий поиск (запрос):  <indexterm><primary>net</primary><secondary>ads</secondary><tertiary>printer search</tertiary></indexterm><screen>
+net ads printer search &lt;printer_name&gt; -Uadministrator%secret
+</screen></para>
+
+	</sect1>
+
+	<sect1>
+	<title>Манипуляции с кэшем Samba</title>
+
+	<para>Пожалуйста, обратитесь к страницам руководства команды <command>net</command> за информацией, касающейся управления кэшем.</para>
+
+	</sect1>
+
+	<sect1>
+	<title>Управление отображениями IDMAP UID/SID</title>
+
+	<para>Отображения IDMAP UID--&gt;SID и SID--&gt;UID, создаваемые <command>winbindd</command>, могут быть сохранены в текстовый файл. Текстовый файл можно отредактировать вручную, несмотря на то, что настоятельно рекомендуется делать это только в том случае, если Вы точно знаете, что делаете.</para>
+
+	<para>Текстовая выгрузка файла IDMAP может быть восстановлена (или перезагружена). Есть две ситуации, в которых это может быть необходимо: а) Существующий файл IDMAP поврежден, б) Необходимо установить отредактированную версию информации отображения.</para>
+
+	<para>Для выгрузки файла IDMAP Winbind должен быть выключен. Перед восстановлением из выгруженного файла завершите <command>winbindd</command> и удалите старый файл <filename>winbindd_idmap.tdb</filename>.</para>
+
+	<sect2>
+	<title>Создаем файл дампа базы данных IDMAP</title>
+
+	<para>База данных IDMAP может быть выгружена в текстовый файл, как показано здесь: <screen>
+net idmap dump &lt;full_path_and_tdb_filename&gt; &gt; dumpfile.txt
+</screen> Если в конкретной сборке Samba файлы .tdb хранятся в каталоге <filename>/var/lib/samba</filename>, то следующая команда создаст файл с дампом: <screen>
+net idmap dump /var/lib/samba/winbindd_idmap.tdb &gt; idmap_dump.txt
+</screen></para>
+
+	</sect2>
+
+	<sect2>
+	<title>Восстанавливаем файл дампа базы данных IDMAP</title>
+
+	<para>Файл дампа IDMAP может быть восстановлен следующей командой: <screen>
+net idmap restore &lt;полный_путь_и_имя_файла_tdb&gt; &lt; dumpfile.txt
+</screen> Если файлы .tdb периода исполнения Samba хранятся в каталоге <filename>/var/lib/samba</filename>, следующую команду можно использовать для восстановления данных в файл tdb: <screen>
+net idmap restore /var/lib/samba/winbindd_idmap.tdb &lt; idmap_dump.txt
+</screen></para>
+
+	</sect2>
+
+	</sect1>
+
+	<sect1 id="netmisc1">
+	<title>Другие различные операции</title>
+
+	<para>Следующая команда является полезной для получения базовой статистики, касающейся домена Samba. Эта команда не работает с текущими клиентами Windows XP Professional. <indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>info</tertiary></indexterm><screen>
+&rootprompt; net rpc info
+Domain Name: RAPIDFLY
+Domain SID: S-1-5-21-399034208-633907489-3292421255
+Sequence number: 1116312355
+Num users: 720
+Num domain groups: 27
+Num local groups: 6
+</screen></para>
+
+	<para>Еще один полезный инструмент - набор <command>net time</command>. Этот инструмент может быть использован для запроса текущего времени на целевом сервере, как показано здесь: <indexterm><primary>net</primary><secondary>time</secondary></indexterm><screen>
+&rootprompt; net time -S SAURON
+Втр Май 17 00:50:43 2005
+</screen> В том случае, если необходимо передать полученную информацию о времени команде UNIX <command>/bin/time</command>, хорошая идея - получить время с целевого сервера в формате, который готов для передачи. Этого можно достигнуть, исполнив: <indexterm><primary>net</primary><secondary>time</secondary><tertiary>system</tertiary></indexterm><screen>
+&rootprompt; net time system -S FRODO
+051700532005.16
+</screen> The time can be set on a target server by executing: <indexterm><primary>net</primary><secondary>time</secondary><tertiary>set</tertiary></indexterm><screen>
+&rootprompt; net time set -S MAGGOT -U Administrator%not24get
+Tue May 17 00:55:30 MDT 2005
+</screen> It is possible to obtain the time zone of a server by executing the following command against it: <indexterm><primary>net</primary><secondary>time</secondary><tertiary>zone</tertiary></indexterm><screen>
+&rootprompt; net time zone -S SAURON
+-0600
+</screen></para>
+
+	</sect1>
+
+</chapter>

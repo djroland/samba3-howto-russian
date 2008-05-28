@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE book PUBLIC "-//Samba-Team//DTD DocBook V4.2-Based Variant V1.0//EN" "http://www.samba.org/samba/DTD/samba-doc">
+<preface id="TOSHpreface">
+<title>Предисловие</title>
+
+<para>Редакторы хотят поблагодарить Вас за Ваше решение приобрести эту книгу. The Official Samba-3 HOWTO and Reference Guide является результатом многих лет накопления информации, писем читателей, советов, подсказок и счастливых решений.</para>
+
+<para>Пожалуйста, заметьте, что эта книга - живой документ, содержание которого постоянно обновляется. Мы просим Вас вносить свои советы, способы, подсказки и Ваши особенные взгляды на мир сетей Windows, чтобы помочь сделать следующее поколение этой книги еще более ценной для пользователей Samba.</para>
+
+<para>Мы сделали слаженное усилие, чтобы более подробно, чем ранее, описать информацию, которая поможет Вам лучше развернуть Samba и получить больше довольных сетевых пользователей.</para>
+
+<para>Эта книга предлагает примеры настроек; документирует ключевые аспекты сетей Microsoft Windows, позволяет погрузиться в важные настройки Samba-3, и помогает сделать из этого всего рабочую платформу.</para>
+
+<para>Наиболее свежие электронные версии этого документа можно найти на <ulink noescape="1" url="http://www.samba.org/">http://www.samba.org/</ulink> на странице <quote>Документация</quote>.</para>
+
+<para>Обновления, заплатки и исправления приветствуются более всего. Пожалуйста. присылайте свои вклады любому из следующих:</para>
+
+<para>
+<simplelist>
+<member><ulink noescape="1" url="mailto:jelmer@samba.org">Jelmer Vernooij (jelmer@samba.org)</ulink></member>
+<member><ulink noescape="1" url="mailto:jht@samba.org">John H. Terpstra (jht@samba.org)</ulink></member>
+<member><ulink noescape="1" url="mailto:jerry@samba.org">Gerald (Jerry) Carter (jerry@samba.org)</ulink></member>
+</simplelist>
+</para>
+
+<para>Мы хотим напомнить, что только оригинальный и понятный материал может быть опубликован.  Пожалуйста, не присылайте контент, который не является Вашей собственной работой, пока доказательство согласия держателя копирайта не сопровождает Ваше отправление.</para>
+
+  <!-- the conventions used in this book -->
+  <xi:include xmlns:xi="http://www.w3.org/2003/XInclude" href="conventions.xml"/>
+
+
+</preface>

@@ -1,0 +1,540 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE chapter PUBLIC "-//Samba-Team//DTD DocBook V4.2-Based Variant V1.0//EN" "http://www.samba.org/samba/DTD/samba-doc">
+<chapter id="samba-pdc">
+
+<chapterinfo>
+	&author.jht;
+	&author.jerry;
+	&author.dbannon;
+	<author>&person.gd; <contrib>Обновления LDAP</contrib></author>
+</chapterinfo>
+
+<title>Управление доменом</title>
+
+<para>Есть множество людей, которые подходят к сетям MS Windows с превосходной неосведомленностью. Это нормально, потому что это дает остальным массу возможностей помочь. Тем же, кому реально необходима помощь, настоятельно советуем хорошенько освоить уже существующую информацию.</para>
+
+<para><indexterm><primary>доменный</primary><secondary>контроллер</secondary></indexterm> Советуем Вам не пытаться выполнять этот раздел без первоначального понимания и выполнения некоторых основ. Сети MS Windows, в частности, не прощают неверной настройки. Пользователи сетей MS Windows часто жалуются на постоянные сбои, которые могут быть вызваны неверной настройкой сети. Однако для большинства людей сети MS Windows начинаются с контроллера домена, который волшебным образом - ожидается - справится со всеми больными местами в работе сети.</para>
+
+<para><link linkend="domain-example">Пример домена для иллюстрации</link></para>
+
+<figure id="domain-example">
+	<title>Пример домена.</title>
+	<imagefile scale="40">домен</imagefile>
+</figure>
+
+<para>В списке рассылки Samba мы легко опознаем множество общих проблем с сетями. Если Вы не слишком сильны в следующих темах, то Вам наверняка стоит прочитать касающиеся их разделы этого HOWTO. Вот наиболее общие причины проблем с сетями MS Windows:</para>
+
+<itemizedlist>
+	<listitem><para>Основная настройка TCP/IP.</para></listitem>
+	<listitem><para>Разрешение имен NetBIOS.</para></listitem>
+	<listitem><para>Настройка аутентификации.</para></listitem>
+	<listitem><para>Настройка пользователей и групп.</para></listitem>
+	<listitem><para>Базовый контроль доступа к файлам и каталогам в UNIX/Linux.</para></listitem>
+	<listitem><para>Понимание того, как клиенты MS Windows взаимодействуют в сетевом окружении.</para></listitem>
+</itemizedlist>
+
+<para>Не откладывайте; на поверхности сети MS Windows кажутся такими простыми, что все могут их настраивать. Однако это плохая идея - устанавливать сеть MS Windows с неадекватными обучением и подготовкой. Но давайте же используем наш первый принцип: <emphasis>Совершать ошибки - это замечательно!</emphasis> Ошибки, сделанные в  нужное время в нужном месте, являются сутью обучения. Конечно же, совсем не замечательно делать ошибки, которые влекут за собой потери в производстве и приносят организации финансовые потери, которых можно было бы избежать.</para>
+
+<para>Где правильное место для совершения ошибок? Только ВНЕ опасных путей. Если Вы собираетесь совершать ошибки, пожалуйста, делайте это на тестовой сети, подальше от пользователей, так, чтобы не заработать проблемы. Занимайтесь своим обучением на тестовой сети.</para>
+
+<sect1>
+<title>Особенности и сильные стороны</title>
+
+<para>
+<indexterm><primary>безопасность домена</primary></indexterm>
+<emphasis>В чем главная особенность безопасности домена от Microsoft?</emphasis>
+</para>
+
+<para><indexterm>один вход<primary/><see>ОВ</see></indexterm><indexterm><primary>доверие</primary></indexterm><indexterm><primary>учетная запись</primary></indexterm><indexterm><primary>домен</primary><secondary>безопасность</secondary><tertiary>протоколы</tertiary></indexterm></para>
+
+<para><indexterm><primary>SID</primary></indexterm><indexterm><primary>RID</primary></indexterm><indexterm><primary>относительный идентификатор</primary><see>RID</see></indexterm><indexterm><primary>идентификаторы безопасности</primary><see>SID</see></indexterm><indexterm><primary>контроль доступа</primary></indexterm> Сильные стороны доменной безопасности доступны для тех сетей, которые развертывают PDC под Samba. Домен предоставляет уникальный сетевой идентификатор безопасности (SID). Идентификаторы безопасности групп и пользователей домена состоят из сетевого SID плюс относительный идентификатор (RID), который уникален для этой учетной записи. SIDы пользователей и групп (сетевой SID плюс RID) могут использоваться, чтобы создать списки доступа (ACLы), связанные с сетевыми ресурсами, для организованного управления доступом. Системы UNIX распознают только локальные идентификаторы безопасности.</para>
+
+<para><indexterm><primary>SID</primary></indexterm> SID представляет контекст безопасности. Например, каждый компьютер с Windows имеет локальные записи в контексте безопасности компьютера, имеющего уникальный SID. Каждый домен (NT4, ADS, Samba) содержит учетные записи, которые существуют в контексте безопасности домена, определяемого SIDом домена.</para>
+
+<para><indexterm><primary>SID</primary></indexterm><indexterm><primary>RID</primary></indexterm> Сервер-участник домена будет иметь SID, отличный от SID домена. Сервер-участник домена может быть настроен на рассмотрение всех пользователей домена как локальных. Он также может быть настроен на распознавание пользователей и групп домена как не-локальных. SIDы являются постоянными. Типичный SID домена или пользователя выглядит примерно так: <screen>
+S-1-5-21-726309263-4128913605-1168186429
+</screen> Каждой учетной записи (пользователю, группе, машине, доверия домена и т.д.) назначен RID. Это делается автоматически при создании учетной запсии. Samba выводит RID алгоритмически. Операционная система UNIX различает  идентификаторы групп и пользователей (GID и UID), но Windows распределяет RID из единого пространства имен. Пользователь и группа Windows не могут иметь одинаковый RID. Так же как пользователь UNIX <literal>root</literal> имеет UID=0, Администратор Windows имеет хорошо известный RID=500. RID добавляется к SID домена Windows, так что учетная запись Администратора домена с SID, приведенным выше, будет иметь пользовательский SID <screen>
+S-1-5-21-726309263-4128913605-1168186429-500
+</screen> В результате у каждой учетной записи в мире сетей Windows будет глобально уникальный идентификатор безопасности.</para>
+
+<note><para><indexterm><primary>домен</primary><secondary>участник</secondary></indexterm><indexterm><primary>учетная запись машины</primary></indexterm><indexterm><primary>домен</primary><secondary>учетная запись доверия</secondary></indexterm> Сетевые клиенты окружения безопасности домена MS Windows должны быть участниками домена, чтобы получать доступ к предоставляемым расш иренным функциям. Участие в домене прдполагает более, чем просто установка имени рабочей группы в имя домена. Необходимо создание учетной записи доверия для рабочей станции (называемой учетная запись машины). Обратитесь к <link linkend="domain-member">Участие в домене</link> для дальнейшей информации.</para></note>
+
+<para>Следующие функции впервые появились в релизе Samba-3:</para>
+
+<itemizedlist>
+	<listitem><para><indexterm><primary>учетная</primary><secondary>база</secondary></indexterm> Samba-3 поддерживает использование нескольких баз, в которых можно хранить учетные записи пользователей, групп и компьютеров. Несколько парольных баз можно использовать вместе, либо как дополняющие источники данных, либо как резервные.</para>
+
+	<para><indexterm><primary>LDAP</primary></indexterm><indexterm><primary>размножен</primary></indexterm><indexterm><primary>распределен</primary></indexterm><indexterm><primary>масштабирован</primary></indexterm><indexterm><primary>reliability</primary></indexterm> Парольная база LDAP дарит преимущества в том, что база может быть распределена и размножена. Это имеет большое значение, поскольку появляется масштабируемость базы, и обеспечивается высокая степень надежности.</para></listitem>
+
+	<listitem><para><indexterm><primary>междоменные</primary><secondary>доверительные отношения</secondary><tertiary>учетные записи</tertiary></indexterm><indexterm><primary>учетные записи доверия</primary><secondary>междоменные</secondary></indexterm><indexterm><primary>взаимодействие</primary></indexterm> Доверительные отношения доменов Windows NT4. Samba-3 поддерживает доверительные учетные записи рабочих станций и серверов (машинные). Она также поддерживает учетные записи междоменных доверительных отношений в духе Windows NT4, что в дальнейшем помогает во взаимодействии и масштабированиии сетей.</para></listitem>
+	
+	<listitem><para><indexterm><primary>NetBIOS</primary></indexterm><indexterm><primary>raw SMB</primary></indexterm><indexterm><primary>active directory</primary></indexterm><indexterm><primary>домен</primary><secondary>сервер-участник </secondary></indexterm><indexterm><primary>домен</primary><secondary>контроллер</secondary></indexterm><indexterm><primary>сеть</primary><secondary>просмотр</secondary></indexterm> Работа без NetBIOS поверх TCP/IP вместо использования SMB поверх TCP/IP. Заметьте, это необходимо только при работе в качестве сервера-участника домена Microsoft Active Directory. При работе в качестве контроллера домена Samba использование NetBIOS необходимо для обеспечения просмотра сети.</para></listitem>
+
+	<listitem><para><indexterm><primary>WINS</primary></indexterm><indexterm><primary>порт TCP</primary></indexterm><indexterm><primary>службы сессий</primary></indexterm> Samba-3 предоставляет службы имен NetBIOS (WINS), службы сессий NetBIOS поверх TCP/IP (TCP порт 139), службы сессий SMB поверх TCP/IP (TCP порт 445), и совместимые с Microsoft службы ONC DCE RPC (TCP порт 135).</para></listitem>
+
+	<listitem><para><indexterm><primary>Nexus.exe</primary></indexterm>  Управление пользователями и группами через Диспетчер пользователей для доменов. Это может быть сделано на любом клиенте MS Windows с использованием набора инструментов <filename>Nexus.exe</filename> для Windows 9x/Me или пакета SRVTOOLS.EXE для платформ MS Windows NT4/200x/XP. Эти пакеты доступны с веб-сайта Microsoft.</para></listitem>
+
+	<listitem><para>Полностью поддерживает Unicode. Это упрощает поддержку разноязыких переводов. Это также открывает возможность использования протоколов, которые были в Samba-2.2.x, но не могли использоваться из-за отсутствия полной поддержки Unicode.</para></listitem>
+</itemizedlist>
+
+<para>Следующие функции не предоставляются Samba-3:</para>
+
+<itemizedlist>
+	<listitem><para><indexterm><primary>SAM</primary></indexterm><indexterm><primary>репликация</primary></indexterm> Репликация баз данных SAM с контроллерами домена Windows NT4 (т.е. Samba PDC и Windows NT BDC, или наоборот). Это значит, что Samba не может работать в качестве BDC, если PDC работает под управлением Microsoft Windows NT. Samba-3 не может участвовать в репликации учетных записей PDC и BDC, работающих под Windows.</para></listitem>
+	
+	<listitem><para><indexterm><primary>kerberos</primary></indexterm><indexterm><primary>active directory</primary></indexterm> Работа в качестве контроллера домена Windows 2000 Active Directory (т.е. Kerberos и Active Directory). На самом деле Samba-3 имеет некоторые способности управления доменом Active Directory, которые в настоящее время полностью экспериментальные. Управление доменом Active directory - одна из фукций, которые разрабатываются в Samba-4, релизе Samba следующего поколения. В настоящее время нет планов включения поддержки управления доменом Active Directory в релизы серии Samba-3.</para></listitem>
+
+	<listitem><para><indexterm><primary>MMC</primary></indexterm><indexterm><primary>SVRTOOLS.EXE</primary></indexterm><indexterm><primary>Microsoft management console</primary><see>MMC</see></indexterm> Консоль управления Microsoft систем Windows 200x/XP не может использоваться для управления сервером Samba-3. В настоящее время Вы можете использовать только MS Windows NT4 Domain Server Manager и MS Windows NT4 Domain User Manager. Оба являются частью пакета SRVTOOLS.EXE, упомянутого ранее.</para></listitem>
+</itemizedlist>
+
+<para><indexterm><primary>Windows XP Home edition</primary></indexterm><indexterm><primary>LanMan</primary></indexterm> Клиенты Windows 9x/Me/XP Home не являются настоящими участниками домена по причинам, обрисованным в этой главе. Протокол, поддерживающий сетевые (доменные) входы типа Windows 9x/Me совершенно отличается от входов в домен типа NT4/Windows 200x, и официально поддерживался некоторое время. Эти клиенты используют старые возможности сетевого входа LanMan, которые поддерживаются в Samba примерно с версии 1.9.15.</para>
+
+<para><indexterm><primary>группы</primary><secondary>отображение</secondary></indexterm> Samba-3 выполняет отображение групп между группами Windows NT и UNIX (это на самом деле слишком сложно, чтобы объяснить в короткой фразе). Это обсуждается более полно в <link linkend="groupmapping">Отображение групп: MS Windows и UNIX</link>.</para>
+
+<para><indexterm><primary>учетная запись машины</primary></indexterm><indexterm><primary>учетная запись доверия</primary><secondary>машина</secondary></indexterm><indexterm><primary>учетная запись машины</primary></indexterm> Samba-3, так же, как и PDC под MS Windows NT4 или Windows 200x Active Directory, должна хранить информацию об учетных записях пользователей и компьютеров в подходящей базе данных. Смотрите <link linkend="machine-trust-accounts">Учетные записи компьютеров MS Windows Workstation/Server </link>. C Samba-3 можно использовать несколько баз. Подробное обсуждение баз данных для учетных записей можно найти в <link linkend="passdb">Базы данных для учетных записей </link>.</para>
+
+</sect1>
+
+<sect1>
+<title>Единый вход и безопасность домена</title>
+
+<para><indexterm><primary>единый вход</primary><see>SSO</see></indexterm><indexterm><primary>SSO</primary></indexterm><indexterm><primary>active directory</primary></indexterm><indexterm><primary>аутентификация</primary></indexterm><indexterm><primary>проверка</primary></indexterm><indexterm><primary>уникальность пароля</primary></indexterm><indexterm><primary>история паролей</primary></indexterm> Когда сетевых администраторов просят описать достоинства сетей Windows NT4 и Active Directory, наиболее часто упоминаемая функция - single sign-on (SSO). Много компаний внедрили решения SSO. Вариант исполнения единого входа является важным фактором в практике сетевого дела вообще, и критическим в смысле сетей Windows. Компания может иметь широкий диапазон информационных систем, каждая из которых нуждается в способе аутентификации и проверки пользователя, несмотря на то, что редко пользователю приходится помнить более десяти ID входа и паролей. Эта проблема появляется, когда паоли для каждой системы должны меняться с регулярными интервалами, и, в частности, когда применяются ограничения по уникальности и истории паролей.</para>
+
+<para><indexterm><primary>management overheads</primary></indexterm> Существует широко распространенное представление, что концепция единого входа является ответом на проблему пользователей, вынужденных работать со слишком большим объемом учетных данных информационных систем (пары имя/пароль). Множество тщательно выверенных схем было создано, чтобы создать дружелюбное к пользователю решение SSO. Проблема в том, что если исполнение не сделано правильно, организация может закончить дорогой расплатой в виде сложности и проблем с управлением. Короче говоря, многие SSO-решения являются административным кошмаром.</para>
+
+<para><indexterm><primary>управление идентификацией</primary></indexterm><indexterm><primary>система аутентификации</primary></indexterm><indexterm><primary>SSO</primary></indexterm> Реализации SSO используют централизацию всей информации о пользовательских учетных записях. В зависимости от сложности окружения и возраста систем, поверх которых выполняется SSO-решение, может быть невозможным изменение архитектуры,  чтобы приспособиться к новой системе управления идентификацией пользователей. Многие SSO-решения, включающие устаревшие системы, состоят из новой сверхструктуры, которая обрабатывает аутентификацию для пользователя. Программное обеспечение, накладываемое на старую систему, может просто исполнять систему промежуточной аутентификации. Это значит, что добавление SSO увеличивает общую сложность информационных систем. В идеале внедрение SSO должно уменьшать сложность и административные затраты.</para>
+
+<para><indexterm><primary>централизованное управление учетными данными</primary></indexterm><indexterm><primary>управление учетными данными</primary><secondary>централизованное</secondary></indexterm><indexterm><primary>централизованная</primary><secondary>аутентификация</secondary></indexterm><indexterm><primary>устаревшие системы</primary></indexterm><indexterm><primary>контроль доступа</primary></indexterm> Начальной целью многих сетевых администраторов часто является создание и использование централизованной системы управления учетными записями. Часто предполагается, что такая централизованная система будет использовать единую инфраструктуру аутентификации, которая может использоваться всеми информационными системами. Архитектура безопасности домена Microsoft Windows NT4 и службы Micrsoft active directory часто избираются как идеальный фундамент для таких систем. Концептуально очень просто - установить внешнего агента аутентификации на каждую из множества информационных систем, которые затем могут использовать домен Miсrosoft NT4 (или службы ADS) для аутентификации пользователей и управления доступом. Чудесная мечта о единой централизованной службе аутентификации часто разбивается, когда осознается реальность. Проблемой с устаревшими системами зачастую является невозможность вынести вовне используемую систему аутентификации и контроля доступа, поскольку ее реализация будет ненужным вторжением с точки зрения обратной разработки, либо потому что прикладное программное обеспечение имеет встроенные зависимости от конкретных элементов того способа, которым были разработаны и построены аутентификация пользователя и контроль доступа.</para>
+
+<para><indexterm><primary>мета-каталог</primary></indexterm><indexterm><primary>учетные данные</primary></indexterm><indexterm><primary>различные информационные системы</primary></indexterm><indexterm><primary>процедуры управления</primary></indexterm><indexterm><primary>протокол работы</primary></indexterm><indexterm><primary>права</primary></indexterm><indexterm><primary>привилегии</primary></indexterm><indexterm><primary>хранимые</primary></indexterm> Последний десяток лет индустрия разрабатывала  различные способы обойти ключевые ограничения устаревших систем информационных технологий. Один часто используемый подход заключается в использовании мета-каталога. Мета-каталог хранит учетные данные пользователя для всех различных информационных систем в формате, необходимом для каждой системы. Выработанный набор процедур управления связан с жестко соблюдаемым протоколом работы для управления пользовательскими правами и привилегиями в лабиринте систем, которые пользуются новой инфраструктурой, делающей возможным доступ пользователя ко всем системам с единым набором учетных данных.</para>
+
+<para><indexterm><primary>Organization for the Advancement of Structured Information Standards</primary><see>OASIS</see></indexterm><indexterm><primary>Security Assertion Markup Language</primary><see>SAML</see></indexterm><indexterm><primary>Federated Identity Management</primary><see>FIM</see></indexterm><indexterm><primary>безопасный доступ</primary></indexterm> Organization for the Advancement of Structured Information Standards (OASIS, Организация продвижения стандартов структурированной информации) разработала Security Assertion Markup Language (SAML, язык разметки условий безопасности), структурированный способ обмена информацией об аутентификации. "Зонт" технологий и способов развертывания SAML называется Federated Identity Management (FIM, Объединенное управление идентификацией). FIM полагается на каждую систему в сложном лабиринте разных информационных систем для аутентификации соответствующих пользователей и предоставления права на безопасный доступ к соответствующим сервисам.</para>
+
+<para><indexterm><primary>Simple Object Access Protocol</primary><see>SOAP</see></indexterm><indexterm><primary>federated organizations</primary></indexterm><indexterm><primary>Liberty Alliance</primary></indexterm><indexterm><primary>federated-identity</primary></indexterm><indexterm><primary/></indexterm><indexterm><primary/></indexterm> Документы SAML могут быть обернуты в сообщения Simple Object Access Protocol (SOAP) для связи компьютер-компьютер, необходимой для веб-сервисо. Или они могут передаваться между веб-серверами объединенных организаций, разделяющих "живые" сервисы. Liberty Alliance, группа, сформированная индустрией для продвижения стандартов, связаных с объединенной идентификацией, использовала SAML 1.1 в качестве части своего набора для создания приложений. Microsoft и IBM предложили альтернативную спецификацию, называемую WS-Security. Некоторые верят, что соревнующиеся технологии и способы могут объединиться, когда будет представлен стандарт SAML 2.0. Немного продуктов управления доступом черерз веб поддерживает SAML сегодня, но реализация технологии в основном требует подгонки для интеграции в приложения и разработки пользовательских интерфейсов. Короче говоря, именно поэтому FIM является большой и растущей индустрией.</para>
+
+<para><indexterm><primary>взаимодействие</primary></indexterm><indexterm><primary>ADS</primary></indexterm><indexterm><primary>LDAP</primary></indexterm><indexterm><primary>GSSAPI</primary></indexterm><indexterm><primary>general security service application programming interface</primary><see>GSSAPI</see></indexterm> Игнорируя общую картину, которая лежит вне поля зрения этой книги, перевод управления всеми пользователями и группами на централизованную систему является шагом в правильном направлении. По причинам, важным для взаимодействия, важно поместить системные данные управления идентификацией в каталог, такой, как Microsoft Active Directory Service (ADS), или любую систему, с открытыми исходниками или проприетарную, которая обеспечивает стандартный протокол для доступа к информации (такой, как LDAP), и затем может быть связана с гибким набором механизмов аутентификации (таких, как kerberos), которые использую протоколы, определенные различными общими службами GSSAPI.</para>
+
+<para><indexterm><primary>OpenLDAP</primary></indexterm><indexterm><primary>ADS</primary></indexterm><indexterm><primary>агенты аутентификации</primary></indexterm> Растущее число компаний предоставляют агентов аутентификации для в корне отличающихся устаревших платформ, позволяющих использовать системы LDAP - например,  OpenLDAP, преобладающей программной реализации стандарта  LDAP. Это значит, что предоставление в Samba поддержки использования LDAP и Microsoft ADS делает Samba высоко масштабируемой и направленной в будущее организационной сетевой технологией.</para>
+
+<para><indexterm><primary>ADS</primary></indexterm><indexterm><primary>LDAP</primary></indexterm><indexterm><primary>архитектура аутентификации</primary></indexterm><indexterm><primary>ntlm_auth</primary></indexterm><indexterm><primary>SQUID</primary></indexterm><indexterm><primary>FIM</primary></indexterm> Microsoft ADS предоставляет чисто проприетарные службы, которые с ограничениями могут быть расширены для предоставления централизованной инфраструктуры аутентификации. Samba плюс LDAP предоставляет схожую возможность для расширения централизованной инфраструктуры аутентификации, но именно Samba Team является активной сторонницей предоставления расширений служб аутентификации с использованием LDAP или чего-либо еще, приложениям, таким, как SQUID (прокси-сервер с открытыми исходниками), через инструменты, такие, как утилита <command>ntlm_auth</command>, и это важно для создания поддерживаемого выбора и конкуренции на рынке FIM.</para>
+
+<para><indexterm><primary>LDAP</primary></indexterm><indexterm><primary>OpenLDAP</primary></indexterm><indexterm><primary>идентификационная информация</primary></indexterm> Первичное управление доменом, если оно должно масштабироваться, чтобы отвечать нуждам больших организаций, должно иметь возможность использовать LDAP. Быстрое распространение OpenLDAP и конфигураций Samba, которые используют его, является достаточным доказательством того, что эра каталогов началась. Samba-3 не нуждается в использовании LDAP, но необходимость в механизме, с помощью которого идентификационная информация пользователей и групп может быть распределена, делает его неизбежным выбором.</para>
+
+<para><indexterm><primary>BDC</primary></indexterm><indexterm><primary>LDAP</primary></indexterm><indexterm><primary>e-Directory</primary></indexterm> В настоящее время использование BDC на Samba влечет за собой необходимость использования LDAP. Наиболее широко используемой реализацией LDAP, используемой организациями с Samba, является OpenLDAP. Возможно использование любого совместимого со стандартом сервера LDAP. Те, о которых известно, что они работают, включают продукты: IBM, CA, Novell (e-Directory), и другие.</para>
+
+</sect1>
+
+<sect1>
+<title>Основы управления доменом</title>
+
+<para><indexterm><primary>управление доменом</primary></indexterm> С течением времени восприятие публикой того, что же есть управление доменом, приняло почти мистическую природу. Перед тем, как мы сделаем отступление в сторону краткого обзора управления доменом: существует три основных типа контроллеров домена.</para>
+
+<sect2>
+<title>Типы контроллера домена</title>
+
+<itemizedlist>
+	<listitem><para>Главный контроллер домена типа NT4 - PDC</para></listitem>
+	<listitem><para>Резервный контроллер домена типа NT4 - BDC</para></listitem>
+	<listitem><para>Контроллер домена ADS</para></listitem>
+</itemizedlist>
+
+<para><indexterm><primary>PDC</primary></indexterm><indexterm><primary>мощный</primary></indexterm><indexterm><primary>сетевая</primary><secondary>производительность</secondary></indexterm><indexterm><primary>домен</primary><secondary>участник</secondary><secondary>сервер</secondary></indexterm> <emphasis>Первичный контроллер домена</emphasis> или PDC играет важную роль в MS Windows NT4. В архитектуре управления доменом Windows 200x эта роль принадлежит контроллерам домена. Фольклор утверждает, что из-за роли в сети MS Windows контроллере домена должен быть наиболее мощной и производительной машиной в сети. Как бы странно это тут ни звучало, хорошая производительность сети вообще диктует необходимость балансировки всей инфраструктуры. Советуем вкладывать больше в одиночные серверы (участники домена), нежели в контроллеры домена.</para>
+
+<para><indexterm><primary>SAM</primary></indexterm><indexterm><primary>BDC</primary></indexterm><indexterm><primary>authenticatior</primary></indexterm><indexterm><primary>synchronization</primary></indexterm><indexterm><primary>Security Account Manager</primary><see>SAM</see></indexterm> В случае домена в стиле MS Windows NT4 именно PDC инициализирует новую базу данных управления доменом. Это составляет часть реестра Windows, называемую Security Account Manager (SAM, диспетчер учетных записей безопасности). Она играет ключевую роль в аутентификации пользователей домена в стиле NT4 и в синхронизации базы данных аутентификации домена с BDC.</para>
+
+<para><indexterm><primary>иерархия</primary><secondary>контроллеров</secondary><tertiary>домена</tertiary></indexterm><indexterm><primary>LDAP</primary></indexterm><indexterm>парольная<primary/><secondary>база</secondary></indexterm><indexterm><primary>учетная запись компьютера</primary></indexterm> В доменах MS Windows 200x Active Directory один контроллер домена инициализирует потенциальную иерархию контроллеров домена, имеющих каждый свою область делегированного управления. Главный контроллер домена имеет возможность перехватить управление у любого подчиненного контроллера, но подчиненные контроллеры могут управлять только подчиненными. С Samba-3 эта функциональность может быть выполнена с использованием парольной базы LDAP для хранения учетных записей пользователей и компьютеров.</para>
+
+<para><indexterm><primary>backend database</primary></indexterm><indexterm><primary>registry</primary></indexterm> New to Samba-3 is the ability to use a backend database that holds the same type of data as the NT4-style SAM database (one of the registry files)<footnote><para>Смотри также <link linkend="passdb">Базы данных учетной информации</link>.</para>.</footnote></para>
+
+<para><indexterm><primary>BDC</primary></indexterm><indexterm><primary>PDC</primary></indexterm><indexterm><primary>WINS</primary></indexterm><indexterm><primary>аутентификация</primary></indexterm><indexterm><primary>netlogon</primary></indexterm><indexterm><primary>поиск имен</primary></indexterm> <emphasis>Backup Domain Controller</emphasis> или BDC играет ключевую роль в обслуживании сетевых запросов на аутентификацию.У BDC есть преимущество в ответах на запросы сетевого входа перед PDC. В сетевом сегменте, имеющем BDC и PDC, скорее всего, BDC будет обслуживать запросы входа в сеть. PDC ответит на запросы входа в сеть, когда BDC слишком занят (высокая нагрузка). Когда пользователь входит в сеть на клиенте домена Windows, рабочая станция опросит сеть, чтобы обнаружить ближайший сервер сетевого входа. В случае использования сервера WINS это делается запросом к серверу WINS. Если сервер сетевого входа не может быть найден запросом WINS, или сервер WINS отсутствует, рабочая станция выполнит поиск имен NetBIOS путем широковещательного запроса через почтовые ящики поверх широковещательного протокола UDP. Это значит, что выбор сервера входа в сеть, который будет использоваться клиентом, зависит от нескольких переменных, таким образом, невозможно легко определить, будет ли PDC или BDC осблуживать конкретный запрос на аутентификацию входа.</para>
+
+<para><indexterm><primary>продвинуть</primary></indexterm><indexterm><primary>demote</primary></indexterm> Windows NT4 BDC может быть продвинут в PDC. Если PDC находится в работе в то время, когда BDC продвигается в PDC, предыдущий PDC автоматически разжалуется в BDC. С Samba-3 это не автоматическая операция; PDC и BDC должны быть настроены вручную, также необходимо сделать другие соответствующие изменния.</para>
+
+<para><indexterm><primary>domain</primary><secondary>controller</secondary><tertiary>convert</tertiary></indexterm> С MS Windows NT4 решение, принятое во время установки, определяет, сервером какого типа станет машина. Возможно продвинуть BDC в PDC, и наоборот. Единственный способ преобразования контроллера домена Windows NT4 в сервер-участник домена или одиночный сервер, предоставляемый Microsoft - переустановка. Во время установки предоставляются следущие варианты:</para>
+
+<itemizedlist>
+	<listitem><para><emphasis>Первичный контроллер домена</emphasis>&smbmdash; содержит SAM домена.</para></listitem>
+	<listitem><para><emphasis>Резервный контроллер домена</emphasis>&smbmdash; содержит копию SAM домена.</para></listitem>
+	<listitem><para><emphasis>Сервер-участник домена</emphasis>&smbmdash; не содержит копию SAM домена; вместо этого он получает аутентификацию у контроллера домена для всего управления доступом.</para></listitem>
+	<listitem><para><emphasis>Одиночный сервер</emphasis>&smbmdash; не играет никакой роли в синхронизации SAM, имеет свою собственную базу аутентификации и не играет никакой роли в безопасности домена.</para></listitem>
+</itemizedlist>
+
+<note><para><indexterm><primary>продвижение</primary></indexterm> Algin Technology LLC предоставляет коммерческий инструмент, которым возможно продвинуть одиночный сервер Windows NT4 в PDC или BDC; также возможен и обратный процесс. Обратитесь к веб-сайту <ulink url="http://utools.com/UPromote.asp">Algin</ulink> за дальнейшей информацией.</para></note>
+
+<para><indexterm><primary>роль</primary><secondary>управления</secondary><tertiary>доменом</tertiary></indexterm><indexterm><primary>полный участник</primary></indexterm> Серверы Samba-3 могут быть легко преобразованы в одну из ролей управления доменом простыми изменениями в файле &smb.conf;. Samba-3 может быть полным участником домена Windows 200x Active Directory.</para>
+
+<para><indexterm><primary>преобразование</primary><secondary>сервера-участника домена</secondary></indexterm> Для полноты картины - настройка управления доменом MS Windows 2000 делается после того, как сервер был установлен. Пожалуйста, обратитесь к документации Microsoft за процедурами, необходимыми для преобразования между сервером-участником домена и сервером-контоллером домена, а также для установки и удаления поддержки служб Active Directory.</para>
+
+<para><indexterm><primary>копирование</primary><secondary>SAM</secondary></indexterm><indexterm><primary>SAM</primary><secondary>копирование</secondary></indexterm> Новой в Samba-3 является способность поностью функционировать как контроллер домена в стиле MS Windows NT4, исключая компоненты репликации SAM. Однако имейте в виду, что Samba-3 также поддерживает протоколы управления доменом MS Windows 200x.</para>
+
+<para><indexterm><primary>ADS</primary></indexterm> В настоящее время любое проявление того, что Samba-3 может работать <emphasis>контроллер домена</emphasis> в родном режиме ADS, ограниченно и экспериментально по природе. Эту функциональность не следует использовать до тех пор, пока Samba Team не предложит для нее формальную поддержку. К тому времени будет пересмотрена документация, чтобы полно отразить все требования по настройке и управлению. Samba может работать как контроллер домена в стиле NT4 в окружении Windows 2000/XP. Однако есть несколько компромиссов:</para>
+
+<itemizedlist>
+	<listitem><para>Нет файлов политик компьютера</para></listitem>
+	<listitem><para>Отсутствие объектов групповой политики.</para></listitem>
+	<listitem><para>Отсутствуют синхронно исполняемые сценарии входа Active Directory.</para></listitem>
+	<listitem><para>Невозможно использовать </para></listitem>
+	<listitem><para>Изменения в реестре оставляют в нем следы, в то время как с Active Directory они не оставляют постоянно действующих следов.</para></listitem>
+	<listitem><para>Без Active Directory Вы не можете выполнить экспорт отдельных приложений для избранных пользователей или групп.</para></listitem>
+</itemizedlist>
+
+</sect2>
+
+<sect2>
+<title>Подготовка для управления доменом</title>
+
+<para><indexterm><primary>одиночный</primary></indexterm><indexterm><primary>рабочая группа</primary></indexterm><indexterm><primary>участник</primary></indexterm><indexterm><primary>security</primary></indexterm></para>
+
+<para><indexterm><primary>рабочая группа</primary></indexterm><indexterm><secondary>участие</secondary>в<primary>рабочей группе</primary></indexterm><indexterm><primary>учетная запись компьютера</primary></indexterm> Необходимо отметить, что участие в рабочей группе не требует специальной настройки, кроме чтого, что у настраиваемой машины необходимо установить общее имя рабочей группы. Обычно имя WORKGROUP для этого не используется. В этом режиме нет учетных записей компьютера, и любая концепция участия как такового ограничена тем фактом, что все компьютеры появляются в сетевом окружении логически сгруппированными вместе. Снова, для ясности: <emphasis>режим рабочей группы не использует учетные записи безопасности для компьютеров</emphasis>.</para>
+
+<para><indexterm><primary>участие в домене</primary></indexterm><indexterm><primary>учетная запись компьютера</primary><secondary>пароль</secondary></indexterm><indexterm><primary>триггер</primary></indexterm> Компьютеры-участники домена имеют доверительную учетную запись компьютера в базе данных учетных записей домена. Для получения участия в домене на каждой машине необходимо выполнить специальную процедуру. Эта процедура, которую может провести только локальная учетная запись администратора, создает учетную запись компьютера (если он а не существует), а затем инициализирует ее. Когда клиент первый раз входит в домен, автоматически будет запущена процедура смены пароля доверительной учетной записи машины.</para>
+
+<note><para><indexterm><primary>участник домена</primary></indexterm> Когда Samba настроена как контроллер домена, безопасная работа сети требует, чтобы все клиенты MS Windows NT4/200x/XP Professional были настроены как участники домена. Если машину не сделали участником домена, то она будет работать как машина рабочей группы (одиночная). Пожалуйста, обратитесь в <link linkend="domain-member">Участие в домене</link> за информацией, касающейся участия в домене.</para></note>
+
+<para>Нижеследующее необходимо, чтобы настроить Samba-3 как PDC в стиле Windows NT4 для клиентов MS Windows NT4/200x/XP:</para>
+
+<itemizedlist>
+	<listitem><para>Базовая настройка сети TCP/IP и MS Windows. </para></listitem>
+	<listitem><para>Правильное обозначение роли сервера  (<smbconfoption name="security">user</smbconfoption>).</para></listitem>
+	<listitem><para>Согласованная настройка разрешения имен.<footnote><para>Смотри <link linkend="NetworkBrowsing">Просмотр сети</link> и <link linkend="integrate-ms-networks">Интеграция сетей MS Windows с Samba</link>.</para></footnote></para></listitem>
+	<listitem><para>Входы в домен клиентов Windows NT4/200x/XP Professional.</para></listitem>
+	<listitem><para>Настройка перемещаемых профилей или явная настройка использования локальных профилей.</para></listitem>
+	<listitem><para>Настройка сетевых/системных политик</para></listitem>
+	<listitem><para>Добавление и управление пользовательскими учетными записями</para></listitem>
+	<listitem><para>Настройка клиентских машин с MS Windows NT4/2000 Professional и Windows XP Professional на участие в домене.</para></listitem>
+</itemizedlist>
+
+<para>Для обслуживания клиентов MS Windows 9x/Me необходима следующая подготовка:</para>
+
+<itemizedlist>
+	<listitem><para>Базовая настройка сети TCP/IP и MS Windows. </para></listitem>
+	<listitem><para>Правильное обозначение роли сервера  (<smbconfoption name="security">user</smbconfoption>).</para></listitem>
+	<listitem><para>Настройка сетевого входа (поскольку Windows 9x/Me/XP Home технически не являются участниками домена, они реально не участвуют в аспектах безопасности входа в домен как в таковых).</para></listitem>
+	<listitem><para>Настройка перемещаемых профилей</para></listitem>
+	<listitem><para>Настройка обработки системных политик.</para></listitem>
+	<listitem><para>Установка сетевого драйвера <quote>Client for MS Windows Networks</quote> и настройка для входа в домен.</para></listitem>
+	<listitem><para>Переключение всех клиентов Windows 9x/Me в безопасность уровня пользователя &smbmdash; если необходимо, чтобы весь доступ к общим ресурсам клиентов управлялся в соответствии с идентификацией пользователей/групп домена.</para></listitem>
+	<listitem><para>Добавление и управление пользовательскими учетными записями</para></listitem>
+</itemizedlist>
+
+<note><para><indexterm><primary>перемещаемые профили</primary></indexterm><indexterm><primary>политики учетной записи</primary></indexterm> Перемещаемые профили и системные/сетевые политики являются расширенными темами сетевого администрирования, которые раскрываются в <link linkend="ProfileMgmt">Управление профилями рабочего стола</link> and <link linkend="PolicyMgmt">Политики системы и учетной записи</link> в этой книге. Однако это не столько необходимая специфика Samba PDC, сколько концепция сетей Windows NT.</para></note>
+
+<para>Контроллер домена - SMB/CIFS сервер, который:</para>
+
+<itemizedlist>
+	<listitem><para><indexterm><primary>NetBIOS</primary><secondary>широковещание</secondary></indexterm><indexterm><primary>WINS</primary></indexterm><indexterm><primary>UDP</primary></indexterm><indexterm><primary>DNS</primary></indexterm><indexterm><primary>active directory</primary></indexterm> Регистрируется и объявляет себя контроллером домена (через широковещательные запросы NetBIOS, так же, как и регистрацией имен либо через широковещательные запросы Mailslot'ов поверх UDP, направленной передачей на WINS-сервер поверх UDP, либо через DNS и Active Directory).</para></listitem>
+
+	<listitem><para><indexterm><primary>NETLOGON</primary></indexterm><indexterm><primary>служба входа LanMan </primary></indexterm> Предоставляет ресурс NETLOGON. (Это на самом деле собрание ресурсов, которые работают поверх множества протоколов. Среди них - служба входа LanMan, служба Netlogon, служба Local Security Account и их разновидности.)</para></listitem>
+
+	<listitem><para>Предоставляет общий ресурс, называемый NETLOGON.</para></listitem>
+</itemizedlist>
+
+<para><indexterm><primary>доменный</primary><secondary>мастер-</secondary><tertiary>браузер</tertiary></indexterm><indexterm><primary>локальный</primary><secondary>мастер</secondary><tertiary>браузер</tertiary></indexterm><indexterm><primary>DMB</primary></indexterm><indexterm><primary>LMB</primary></indexterm><indexterm><primary>список просмотра</primary></indexterm> Довольно легко настроить Samba так, чтобы он предоставлял это. Каждый контроллер домена Samba должен предоставлять общий ресурс NETLOGON, который в Samba называется функцией <smbconfoption name="domain logons"/>  (по имени параметра в файле &smb.conf;). Дополнительно один сервер в домене Samba-3 должен объявить себя мастер-браузером домена.<footnote><para>Смотри <link linkend="NetworkBrowsing">Просмотр сети</link>.</para></footnote> Это заставляет PDC заявить специфичное для домена NetBIOS-имя, которое идентифицирует его как DMB для заданного домена/рабочей группы. Локальные мастер-браузеры (LMB) в том же домене или рабочей группе, но в изолированных по широковещанию подсетях будут запрашивать копию спсика просмотра для целой сети. После этого клиенты браузеров свяжутся со своими LMB и получат общедоменный список просмотра вместо списка только для изолированной по широковещанию подсети.</para>
+
+</sect2>
+</sect1>
+
+<sect1>
+<title>Управление доменом: Пример настройки</title>
+
+<para>Первый шаг в создании рабочего PDC под Samba - понимание параметров, необходимых в &smb.conf;. Примерный &smb.conf; для работы в качестве PDC можно найти в<link linkend="pdc-example">файле smb.conf для примерного PDC</link>.</para>
+
+<example id="pdc-example">
+<title>smb.conf для работы в качестве PDC</title>
+<smbconfblock>
+<smbconfsection name="[global]"/>
+<smbconfoption name="netbios name"><replaceable>BELERIAND</replaceable></smbconfoption>
+<smbconfoption name="workgroup"><replaceable>&example.workgroup;</replaceable></smbconfoption>
+<smbconfoption name="passdb backend">tdbsam</smbconfoption>
+<smbconfoption name="os level">33</smbconfoption>
+<smbconfoption name="preferred master">auto</smbconfoption>
+<smbconfoption name="domain master">да</smbconfoption>
+<smbconfoption name="local master">да</smbconfoption>
+<smbconfoption name="security">user</smbconfoption>
+<smbconfoption name="domain logons">да</smbconfoption>
+<smbconfoption name="logon path">\\%N\profiles\%U</smbconfoption>
+<smbconfoption name="logon drive">H:</smbconfoption>
+<smbconfoption name="logon home">\\homeserver\%U\winprofile</smbconfoption>
+<smbconfoption name="logon script">logon.cmd</smbconfoption>
+
+<smbconfsection name="[netlogon]"/>
+<smbconfoption name="path">/var/lib/samba/netlogon</smbconfoption>
+<smbconfoption name="read only">да</smbconfoption>
+<smbconfoption name="write list"><replaceable>ntadmin</replaceable></smbconfoption>
+
+<smbconfsection name="[profiles]"/>
+<smbconfoption name="path">/var/lib/samba/profiles</smbconfoption>
+<smbconfoption name="read only">нет</smbconfoption>
+<smbconfoption name="create mask">0600</smbconfoption>
+<smbconfoption name="directory mask">0700</smbconfoption>
+</smbconfblock>
+</example>
+
+<para>Основные опции, показанные в <link linkend="pdc-example">этом примере</link>, объяснены ниже:</para>
+
+<variablelist>
+	<varlistentry><term>passdb backend</term>
+		<listitem><para><indexterm><primary>группа</primary><secondary>учетная запись</secondary></indexterm><indexterm><primary>smbpasswd</primary></indexterm><indexterm><primary>tdbsam</primary></indexterm><indexterm><primary>ldapsam</primary></indexterm><indexterm><primary>guest</primary></indexterm><indexterm><primary>учетные записи по умолчанию</primary></indexterm> Здесь хранится вся информация о пользователях и группах. Допустимые значения для PDC: <emphasis>smbpasswd, tdbsam, and ldapsam</emphasis>. Элемент <quote>guest</quote> описывает учетные записи по умолчанию, и добавляется по умолчанию; следовательно, нет необходимости указывать его явным образом.</para>
+
+		<para><indexterm><primary>passdb backend</primary></indexterm><indexterm><primary>distributed</primary></indexterm><indexterm><primary>smbpasswd</primary></indexterm><indexterm><primary>tdbsam</primary></indexterm> Если предполагается использование BDC, единственный логичный выбор парольной базы - LDAP, так, чтобы парольные базы могли распределяться. Файлы tdbsam и  smbpasswd не могут эффективно распределяться, и, следовательно, не должны использоваться.</para></listitem>
+	</varlistentry>
+
+	<varlistentry><term>Параметры управления доменом</term>
+		<listitem><para><indexterm><primary>os level</primary></indexterm><indexterm><primary>preferred master</primary></indexterm><indexterm><primary>domain master</primary></indexterm><indexterm><primary>network</primary><secondary>logon</secondary></indexterm> Параметры <emphasis>os level, preferred master, domain master, security, encrypt passwords</emphasis> и <emphasis>domain logons</emphasis> играют главную роль в обеспечении упарвления доменом и поддержке входа в сеть.</para>
+
+		<para><indexterm><primary>DMB</primary></indexterm><indexterm><primary>encryped password</primary></indexterm> Параметр <emphasis>os level</emphasis> должен быть установлен в 32 или более. Контроллер домена должен быть DMB, работать в режиме безопасности <emphasis>user</emphasis>, поддерживать Microsoft-совместимые зашифрованные пароли и должен предоставлять службу сетевого входа. Зашифрованные пароли должны быть включены. За деталями того, как это сделать, обратитесь к <link linkend="passdb">Информационные базы учетных записей</link>.</para></listitem>
+	</varlistentry>
+
+	<varlistentry><term>Параметры окружения</term>
+		<listitem><para><indexterm><primary>logon path</primary></indexterm><indexterm><primary>logon home</primary></indexterm><indexterm><primary>logon drive</primary></indexterm><indexterm><primary>logon script</primary></indexterm> Параметры <emphasis>logon path, logon home, logon drive</emphasis> и <emphasis>logon script</emphasis> являются настройками поддержки окружения, которые помогают облегчать операции входа клиентов и помогают предоставлять возможности автоматизированного управления для облегчения управления сетью. Пожалуйста, обратитесь к страницам руководства за информацией по этим параметрам.</para></listitem>
+	</varlistentry>
+
+	<varlistentry><term>Общий ресурс NETLOGON</term>
+		<listitem><para><indexterm><primary>NETLOGON</primary></indexterm><indexterm><primary>обработка входа</primary></indexterm><indexterm><primary>вход в домен</primary></indexterm><indexterm><primary>участие в домене</primary></indexterm><indexterm><primary>групповая политика</primary></indexterm><indexterm><primary>NTConfig.POL</primary></indexterm> Общий ресурс NETLOGON играет центральную роль в поддержке входа в домен и участия в домене. Этот общий ресурс предоставляется на всех контроллерах домена Microsoft. Он используется для выдачи сценариев входа, для хранения файлов групповых политик (NTConfig.POL), так же, как и для размещения других общих инструментов, которые могут понадобиться для обработки входа. Это существенный общий ресурс контроллеров домена.</para></listitem>
+	</varlistentry>
+
+	<varlistentry><term>Общий ресурс PROFILE</term>
+		<listitem><para><indexterm><primary>профили рабочего стола</primary></indexterm><indexterm><primary>VFS</primary></indexterm><indexterm><primary>fake_permissions</primary></indexterm><indexterm><primary>профиль</primary></indexterm><indexterm><primary/></indexterm> Этот ресурс используется для хранения пользовательских профилей. У каждого пользователя должен быть каталог в уорне этого ресурса. Этот каталог должен быть доступен для записи пользователем, и глобально доступен для чтения. Samba-3 имеет модуль VFS, называемый <quote>fake_permissions</quote> ("Поддельные разрешения"), который может быть установлен на этот ресурс. Это позволит администратору Samba сделать каталог доступным только для чтения для всех. Кончено, это можно использовать только после того, как профиль был создан.</para></listitem>
+	</varlistentry>
+</variablelist>
+
+<note><para>Параметры, приведенные выше, составляют полный набор функциональности, которая может определять режим работы сервера. Следующие параметры &smb.conf; являются существенными сами по себе:</para>
+
+<para>
+<smbconfblock>
+<smbconfoption name="netbios name">BELERIAND</smbconfoption>
+<smbconfoption name="workgroup">&example.workgroup;</smbconfoption>
+<smbconfoption name="domain logons">Да</smbconfoption>
+<smbconfoption name="domain master">Да</smbconfoption>
+<smbconfoption name="security">Пользователь</smbconfoption>
+</smbconfblock>
+</para>
+
+<para>Дополнительные параметры, показанные в дальнейшем листинге этого раздела, всего лишь составляют более подробное объяснение.</para></note>
+
+</sect1>
+
+<sect1>
+<title>Управление доменом ADS из Samba</title>
+
+<para><indexterm><primary>active directory</primary></indexterm> Samba-3 не является сервером Active Directory, и, следовательно, не может работать как он. Он не может по-настоящему функционировать как Active Directory PDC. Протоколы некоторых функций контроллера домена Active Directory были реализованы частично, на экспериментальной основе. Пожалуйста, не ожидайте, что Samba-3 поддерживает эти протоколы. Не полагайтесь на любую такую функциональность сейчас или в будущем. Samba Team может убрать эти экспериментальные функции или изменить их поведение. Это упомянуто для тех, кто открыл секретные возможности в Samba-3 и спросил, когда эта функциональность будет завершена. Ответ - может быть, когда-нибудь или никогда!</para>
+
+<para><indexterm><primary>domain controllers</primary></indexterm><indexterm><primary>active directory</primary></indexterm> Чтбы внести ясность, Samba-3 разработан, чтобы обеспечить большую часть функциональности, которую имеют контроллеры домена типа Microsoft Windows NT4. Samba-3 не имеет всех возможностей Windows NT4, но у него есть много функций, которые не имеют контроллеры домена Windows NT4. Короче, Samba-3 - не NT4 и не Windows Server 200x: это не сервер Active Directory server. Надеемся, что это достаточно ясно и просто, чтобы всем было понятно.</para>
+
+</sect1>
+
+<sect1>
+<title>Натсройка домена и сетевого входа</title>
+
+<para><indexterm><primary>вход в домен</primary></indexterm> Тема входа в сеть или в домен обсуждается здесь, потому что она составляет неотъемлемую часть существенной функциональности, предоставлемой контроллером домена.</para>
+
+<sect2>
+<title>Общий ресурс сетевого входа домена</title>
+
+<para><indexterm><primary>вход в домен</primary></indexterm> На всех контроллерах домена должна быть запущена служба входа в домен (<emphasis>domain logons</emphasis> in Samba). Один контроллер домена должен быть настроен с <smbconfoption name="domain master">Yes</smbconfoption> (PDC); на всех BDC выставьте <smbconfoption name="domain master">No</smbconfoption>.</para>
+
+<sect3>
+<title>Пример настройки</title>
+
+<example id="PDC-config">
+<title>smb.conf для работы в качестве PDC</title>
+<smbconfblock>
+<smbconfsection name="[global]"/>
+<smbconfoption name="domain logons">Да</smbconfoption>
+<smbconfoption name="domain master">(Да для PDC, Нет для BDC)</smbconfoption>
+
+<smbconfsection name="[netlogon]"/>
+<smbconfoption name="comment">Ресурс сетевого входа</smbconfoption>
+<smbconfoption name="path">/var/lib/samba/netlogon</smbconfoption>
+<smbconfoption name="guest ok">Да</smbconfoption>
+<smbconfoption name="browseable">Нет</smbconfoption>
+</smbconfblock>
+</example>
+
+</sect3>
+<sect3>
+<title>Специальный случай MS Windows XP Home Edition</title>
+
+<para><indexterm><primary>Windows XP Home edition</primary></indexterm> Чтобы внести полную ясность: Если Вы хотите интегрировать MS Windows XP Home Edition в систему безопаности домена MS Windows NT4 или Active Directory, поймите, что это не может быть сделано. Единственный выбор - купить обновление с MS Windows XP Home Edition до MS Windows XP Professional.</para>
+
+<note><para>MS Windows XP Home Edition не может входить в систему безопасности домена. В отличие от MS Windows 9x/Me, MS Windows XP Home Edition также начисто лишена возможности входа в сеть.</para></note>
+
+<para>Итак, это сказано, и, пожалуйста, не просите в списках рассылки, и не посылайте электронную почтой кому-либо из членов команды Samba с вопросами, как это можно сделать. Это сделать нельзя. Если это можно, то в этом случае нарушается Ваше лицензионное соглашение с Microsoft, и мы рекомендуем Вам не делать этого.</para>
+
+</sect3>
+
+<sect3>
+<title>Специальный случай Windows 9x/Me</title>
+
+<para><indexterm><primary>домен</primary></indexterm><indexterm><primary>рабочая группа</primary></indexterm><indexterm><primary>аутентификация</primary></indexterm><indexterm><primary>просмотр сети</primary></indexterm><indexterm><primary>права</primary></indexterm> Домен и рабочая группа являются одним и тем же в смысле просмотра сети. Разница в том, что с доменом связана распределенная база данных аутентификации - для безопасного доступа к сети. Кроме того, пользователям, успешно прошедшим аутентификацию на сервере входа в домен, могут быть назначены различные права доступа. Сейчас Samba-3 делает это тем же способом, как и MS Windows NT/200x.</para>
+
+<para><indexterm><primary>просмотр</primary></indexterm> Клиент SMB, выполняющий вход в домен, ожидает, что любой другой сервер в домене должен принять ту же самую информацию аутентификации. Функциональность просмотра сети для доменов и рабочих групп является идентичной, и описана в документации, обсуждающей просмотр сети. Необходимо отметить, что просмотр сети полностью ортогонален поддержке входа.</para>
+
+<para><indexterm><primary>единый вход</primary></indexterm><indexterm><primary>входы в домен</primary></indexterm><indexterm><primary>сетевой вход</primary></indexterm> Вопросы, связанные с сетевой моделью единого входа, обсуждаются в этом разделе. Samba поддерживает входы в домен, сценарии сетевого входа и профили пользователей клиентов MS Windows for Workgroups и MS Windows 9x/Me, которые описаны в этом разделе.</para>
+
+<para><indexterm><primary>широковещательный запрос</primary></indexterm> Когда клиент SMB в домене хочет произвести вход, он рассылает широковещательные запросы в поисках сервера входа. Первый ответивший и начинает работу с клиентом, проверяя пароль с использованием того механизма, который установил администратор Samba. Возможно (но не советуем!) создать домен, в котором база данных о пользователях не будет являться общей между серверами; то есть реально они будут серверами рабочих групп, объявляющими, что участвуют в домене. Это демонстрирует, что аутентификация сильно отличается, но тесно взаимодействует с доменами.</para>
+
+<para>Используя эти функции, Вы можете заставить Ваших клиентов входить на сервер Samba, запускать сценарий при входе в сеть и загружать свои установки, рабочий стол и меню `Пуск`.</para>
+
+<para><emphasis>MS Windows XP Home edition не способна присоединиться к домену и не позволяет использовать вход в домен. </emphasis></para>
+
+<para>Перед началом инструкций по настройке стоит взглянуть на то, как клиенты Windows 9x/Me выполняют вход:</para>
+
+<orderedlist>
+<listitem>
+	<para><indexterm><primary>DOMAIN&lt;1C&gt;</primary></indexterm><indexterm><primary>сервер входа</primary></indexterm> Клиент посылает широковещательный запрос (на широковещательный IP-адрес подсети, в которой находится) NetLogon. Запрос рассылается на имя NetBIOS DOMAIN&lt;1C&gt; на уровне NetBIOS. Клиент выбирает первый полученный ответ, который содержит NetBIOS-имя сервера входа для использования в формате <filename>\\SERVER</filename>. Часть имени <literal>1C</literal> является его типом, который регистрируют контроллеры домена (серверы SMB/CIFS, которые предоставляют сервис входа в сеть).</para>
+</listitem>
+
+<listitem>
+	<para><indexterm><primary>IPC$</primary></indexterm><indexterm><primary>SMBsessetupX</primary></indexterm><indexterm><primary>SMBtconX</primary></indexterm> Клиент соединяется с этим сервером, входит (делает SMBsessetupX) и после подсоединяется к общему ресурсу IPC$ (используя SMBtconX).</para>
+</listitem>
+
+<listitem>
+	<para><indexterm><primary>NetWkstaUserLogon</primary></indexterm> Клиент делает запрос NetWkstaUserLogon? который возвращает название сценария входа пользователя.</para>
+</listitem>
+
+<listitem>
+	<para>Затем клиент подключается к ресурсу NetLogon и ищет указанные сценарии. Если они найдены и их можно прочитать, они загружаются и исполняются клиентом. После этого клиент отсоединяется от ресурса NetLogon.</para>
+</listitem>
+
+<listitem>
+	<para><indexterm><primary>NetUserGetInfo</primary></indexterm><indexterm><primary>профиль</primary></indexterm> Клиент посылает серверу запрос NetUserGetInfo, получая домашний ресурс пользователя, который используется для поиска профилей. Поскольку ответ на запрос NetUserGetInfo содержит не более, чем домашний ресурс пользователя, профили для клиентов Windows 9x должны оставаться в домашнем каталоге пользователя.</para>
+</listitem>
+
+<listitem>
+	<para><indexterm><primary>профили</primary></indexterm> Клиент соединяется с домашним ресурсом пользователя и ищет профиль пользователя. Иначе говоря, Вы можете указать домашний ресурс пользователя в виде общего ресурса и пути -  например, <filename>\\server\fred\.winprofile</filename>. Если профили находятся, то они исполняются.</para>
+</listitem>
+
+<listitem>
+	<para><indexterm><primary>CONFIG.POL</primary></indexterm> Затем клиент отсоединяется от домашнего ресурса пользователя, снова соединяется с ресурсом NetLogon и ищет <filename>CONFIG.POL</filename>, файл политик. Если он находится, он читается и исполняется.</para>
+</listitem>
+</orderedlist>
+
+<para>Основное различие в конфигурации между PDC и сервером входа Windows 9x/Me:</para>
+
+<itemizedlist>
+<listitem><para><indexterm><primary>пароль</primary><secondary>plaintext</secondary></indexterm><indexterm><primary>незашифрованный пароль</primary></indexterm> Шифрование пароля не требуется для сервера входа Windows 9x/Me. Но заметьте, что начиная с MS Windows 98 в настройках по умолчанию поддержка использования открытых паролей отключена. Ее можно включить изменениями в реестре, которые описаны в <link linkend="PolicyMgmt">Политики системы и учетных записей</link>.</para></listitem>
+
+	<listitem><para><indexterm><primary>учетные записи компьютера</primary></indexterm> Клиенты Windows 9x/Me не нуждаются и не используют учетные записи компьютера.</para></listitem>
+</itemizedlist>
+
+<para><indexterm><primary>службы сетевого входа</primary></indexterm> PDC Samba будет работать сервером входа Windows 9x/Me; в итоге он обеспечит все службы сетевого входа, которые ожидает найти MS Windows 9x/Me.</para>
+
+<note><para><indexterm><primary>сниффер</primary></indexterm> Использование незашфрованных паролей настойчиво не рекомендуется. При использовании они легко обнаруживаются  снифферами, проверяющими сетевой трафик.</para></note>
+
+</sect3>
+</sect2>
+
+<sect2>
+<title>Режимы безопасности и мастер-браузеры</title>
+
+<para><indexterm><primary>режим безопасности</primary></indexterm><indexterm><primary>безопасность уровня пользователя</primary></indexterm><indexterm><primary>безопасность уровня ресурса</primary></indexterm> Есть несколько комментариев, призванных выяснить недосказанные моменты. Было много споров о том, хорошо ли настраивать Samba как контроллер домена, работающий в режиме безопасности, отличном от "user". Единственный режим безопасности, который не будет работать по техническим причинам - бехопасность уровня ресурсов ("share"). Режимы безопасности "domain" и "server" являются всего лишь вариантами на тему безопасности уровня пользователя ("user") SMB.</para>
+
+<para><indexterm><primary>DOMAIN&lt;1C&gt;</primary></indexterm><indexterm><primary>DOMAIN&lt;1B&gt;</primary></indexterm><indexterm><primary>DMB</primary></indexterm><indexterm><primary>PDC</primary></indexterm><indexterm><primary>NetBIOS-имя</primary></indexterm><indexterm><primary>контроллер домена</primary></indexterm><indexterm><primary>выборы</primary></indexterm> На самом деле этот вопрос тесно связан со спорами о том, следует ли Samba быть DMB для совей рабочей группы при иработе в режиме контроллера домена. В чистом домене Microsoft Windows NT PDC выигрывает выборы, становится DMB, и затем регистрирует имя NetBIOS DOMAIN&lt;1B&gt;. Это не является именем, по которому клиенты Windows находят контроллер домена, все контроллеры домена регистрируют имя DOMAIN&lt;1C&gt;, и клиенты Windows обнаруживают сервер входа по имени DOMAIN&lt;1C&gt;. DMB - мастер-браузер домена &smbmdash; смотрите <link linkend="NetworkBrowsing">Просмотр сети</link>, <link linkend="DMB">Настройка просмотра рабочей группы</link>; PDC от Microsoft ожидают победы на выборах DMB, если же выборы проиграны, в журнал событий Windows будет отправлена длительная и непрерывная последовательность предупреждений о том, что выборы на должность DMB проиграны. Поэтому в тех сетях, где сервер Samba является PDC, будет мудрым настроить контроллер домена Samba как DMB.</para>
+
+<note><para><indexterm><primary>DOMAIN&lt;1D&gt;</primary></indexterm><indexterm><primary>синхронизация</primary></indexterm><indexterm><primary>управление доменом</primary></indexterm><indexterm><primary>управление списком просмотра</primary></indexterm><indexterm><primary>сервис</primary><secondary>сетевого</secondary><tertiary>входа</tertiary></indexterm> Серверы SMB/CIFS, которые регистрируют имя DOMAIN&lt;1C&gt; , делают это, потому что они предоставляют службы сетевого входа. Серверы, которые регистрируют имя   DOMAIN&lt;1B&gt; являются DMB &smbmdash; в смысле, что они отвечают за синхронизацию списков просмотра среди всех машин, зарегистрировавших имя DOMAIN&lt;1D&gt;. Последние являются LMB, на которых лежит ответственность за прослушивание всех регистраций имен NetBIOS, которые происходят локально, в их собственных сетевых сегментах. Служба сетевого входа  (NETLOGON) уместна для управления доменом, и никак не связана с просмотром сети и управлением списком просмотра. Сервисы с именами 1C и 1B/1D ортогональны друг другу.</para></note>
+
+<para>Сейчас вернемся назад к вопросу настройки контроллера домена Samba для использования в режимах безопасности, отличных от <smbconfoption name="security">user</smbconfoption>. Если хост с Samba настроен на использование другого сервера SMB или контроллера домена для проверки запросов на подключение пользователей, то очевидным фактом является то, что другой хост сети (<smbconfoption name="password server"/>) знает больше о пользователе, чем хост с Samba. В 99 процентах случаев этот другой хост - контроллер домена. Таким образом, чтобы работать в режиме безопасности домена, параметр <smbconfoption name="workgroup"/> следует установить в имя домена Windows NT (e которого уже есть свой контроллер домена). Если же у домена еще нет контроллера домена, то у Вас еще нет домена.</para>
+
+<para>Натсройка системы с Samba как контроллер домена для домена, который уже по определению имеет PDC - просьба о проблемах. Следовательно, Вам необходимо всегда настраивать контроллер домена Samba как DMB для своего домена, и устанавливать  <smbconfoption name="security">user</smbconfoption>. Это является единственным официально поддерживаемым режимом работы.</para>
+
+</sect2>
+
+</sect1>
+
+<sect1>
+<title>Общие ошибки</title>
+
+<sect2>
+<title>Невозможно включить <quote>$</quote> в имя компьютера</title>
+
+<para><indexterm><primary>BSD</primary></indexterm><indexterm><primary>FreeBSD</primary></indexterm><indexterm><primary>/etc/passwd</primary></indexterm> Учетная запись компьютера, как правило, хранится в <filename>/etc/passwd</filename> в виде имени машины с добавленным <quote>$</quote>. Некоторые системы BSD не создадут пользователя с <quote>$</quote> в имени. Недавние версии FreeBSD убрали это ограничение, но старые релизы все еще широко используются.</para>
+
+<para><indexterm><primary>vipw</primary></indexterm> Проблема только в программе, используемой для создания элемента. Однажды сделанный, он работает великолепно. Создайте пользователя без <quote>$</quote>. Затем используйте <command>vipw</command> для редактирования элемента, добавив <quote>$</quote>. Либо добавьте запись целиком с помощью vipw, если Вам так больше нравится. Удостоверьтесь, что использован уникальный UID.</para>
+
+<note><para>Учетная запись компьютера дожна иметь в точности то же имя, которе имеет рабочая станция.</para></note>
+
+<note><para>Программа UNIX <command>vipw</command> является общеизвестным инструментом для прямого редактирования файла <filename>/etc/passwd</filename>. Использование vipw гарантирует, что файлы shadow (если используются) останутся в соответствии с текущими файлами passwd. Это важно по причинам безопасности.</para></note>
+
+</sect2>
+
+<sect2>
+<title>Присоединение к домену завершается неудачей, потому что учетная запись компьютера уже существует</title>
+		
+<para>
+<indexterm><primary>присоединиться к домену</primary></indexterm>
+<quote>Я получаю сообщение `Вы уже присоединены к домену ....` или `Невозможно войти в домен, данные учетной записи конликтуют с уже имеющимися...` при создании учетной записи компьютера.</quote>
+</para>
+
+<para>Это происходит, если вы пытаетесь создать учетную запись компьютера с него же, и уже имеете соединение (например, отображенный диск) с ресурсом (или IPC$) на PDC Samba. Следующая команда закроет все подключения к сетевым дискам:<screen>
+&dosprompt;<userinput>net use * /d</userinput>
+</screen> Это завершит все сетевые подключения.</para>
+
+<para>Далее, если машина уже является <quote>участником рабочей группы</quote>, которая имеет то же имя, что и домен, к которому Вы присоединяетесь (плохая идея), Вы получите это сообщение. Измените имя рабочей группы на что-либо другое &smbmdash; не важно, что именно &smbmdash; перезагрузитесь, и попробуйте еще раз.</para>
+
+</sect2>
+
+<sect2>
+<title>Невозможно войти в систему (C000019B)</title>
+
+<para><quote>Я успешно присоединился к домену Samba, но после перехода  на новую версию кода Samba при попытке входа я получаю сообщение <errorname>`Невозможно войти в систему (C000019B). Пожалуйста, попробуйте еще раз или обратитесь к системному администратору</errorname>'.</quote>
+</para>
+
+<para><indexterm><primary>SID</primary></indexterm> Это случается, когда SID домена, хранящийся в базе secrets.tdb, меняется. Наиболее общая причина изменения SID домена - переименование домена и/или сервера (NetBIOS-имени). Единственный способ исправить проблему - восстановить оригинальный SID домена, или убрать клиента из домена и войти в домен по новой. SID домена можно сбросить, используя утилиты net или rpcclient.</para>
+
+<para>Чтобы сбросить или изменить SID домена, Вы можете использовать команду net следующим образом: <screen>
+&rootprompt;<userinput>net getlocalsid 'СТАРОЕ_ИМЯ'</userinput>
+&rootprompt;<userinput>net setlocalsid 'SID'</userinput>
+</screen></para>
+
+<para>Учетные записи компьютеров работают только с доменным (или сетевым) SID. Если этот SID меняется, участники домена (рабочие станции) не смогут войти в домен. Оригинальный SID  домена может быть восстановлен из файла secrets.tdb. Альтернативой этому является посещение каждой рабчей станции для повторного присоединения ее к домену.</para>
+
+</sect2>
+
+<sect2>
+<title>Учетная запись компьютера не доступна</title>
+
+<para>
+<quote>Когда я пробую присоединиться к домену, получаю сообщение  <errorname>"Учетная запись для этого компьютера либо не существует, либо не доступна</errorname>." Что не так?</quote>
+</para>
+
+<para>Эта проблема возникает, если на PDC отсутствуеь подходящая учетная запись компьютера. Если Вы используете <smbconfoption name="add machine script"/> для создания учетных записей, то это показывает, что создание учетной записи не удалось. Удостоверьтесь, что система администрирования домена работает.</para>
+
+<para>Либо, если Вы создаете учетные записи вручную, они не были корректно созданы. Удостоверьтесь, что у Вас есть правильная учетная запись компьютера в файле <filename>smbpasswd</filename> на Samba PDC. Если Вы добавили учетную запись, используя редактор, отличный от программы smbpasswd, удостоверьтесь, что именем учетной записи является NetBIOS-имя машины с добавлением <quote>$</quote> (т.е. имя_компьютера$). Такая запись должна присутствовать как в парольной базе POSIX, так и в базе SambaSAMAccount. Парольная база Samba-3 по умолчанию (т.е., параметр <parameter>passdb backend</parameter> не указан в файле &smb.conf;, или указан равным  <literal>smbpasswd</literal>) находится в файлах <filename>/etc/passwd</filename> (системная) и <filename>/etc/samba/smbpasswd</filename> (или <filename>/usr/local/samba/lib/private/smbpasswd</filename> при сборке с настройками Samba Team по умолчанию). Использование <filename>/etc/passwd</filename> может быть переопределено альтернативными настройками в файле NSS <filename>/etc/nsswitch.conf</filename>. </para>
+
+<para>Некоторые люди также сообщали, что несоответствие маск и подсети между сервером Samba и клиентом NT может породить эту проблему. Удостоверьтесь, что они одинаковы у клиента и сервера.</para>
+</sect2>
+
+<sect2>
+<title>Учетная запись отключена</title>
+
+<para><quote>Когда я пытаюсь войти в домен Samba с рабочей станции NT4/W200x, получаю сообщение о том, что моя учетная запись отключена.</quote></para>
+
+<para>Включите учетную запись пользователя командой <userinput>smbpasswd -e <replaceable>имя_пользователя</replaceable>
+</userinput>.Это обычно делается при создании учетной записи.</para>
+
+</sect2>
+
+<sect2>
+<title>Контроллер домена недоступен</title>
+		
+<para><quote>До того, как пройдет несколько минут после запуска Samba-3, клиенты получат сообщение 'Контроллер домена недоступен'.</quote></para>
+
+<para>Контроллер домена должен объявить о своей роли в сети. Это обычно занимает много времени. Будьте терпеливы примерно 15 минут, затем попробуйте еще.</para>
+</sect2>
+
+<sect2>
+<title>Невозможно войти на рабчую станцию после присоединения к домену</title>
+
+<para><indexterm><primary>schannel</primary></indexterm><indexterm><primary>signing</primary></indexterm> После упешного присоединения к домену вход пользователей завершается неудачей с одним из двух сообщений: первое - о том, что контроллер домен найти невозможно; второе заявляет, что учетная запись не существует или указан неверный пароль. Это может происходить из-за несовместимых настроек между клиентом Windows и сервером Samba-3, касающихся установок безопасного канала (<emphasis>schannel</emphasis>) или установок <emphasis>smb signing</emphasis>. Проверьте Ваши настройки Samba: <emphasis>client schannel</emphasis>, <emphasis>server schannel</emphasis>, <emphasis>client signing</emphasis>, <emphasis>server signing</emphasis>, исполнив: <screen>
+<command>testparm -v | grep channel</command> и просмотрите значения этих параметров.
+</screen></para>
+
+<para>Также ипользуйте MMC &smbmdash; Локальные настройки безопасности. Этот инструмент доступен из панели управления. Настройки политки находятся в Локальные политики / Настройки безопасности и начинаются с <emphasis>Безопасный канал:..., и  Цифровая подпись...</emphasis>.</para>
+
+<para>Важно, чтобы это было установлено так же, как на сервере Samba-3.</para>
+
+</sect2>
+
+</sect1>
+</chapter>

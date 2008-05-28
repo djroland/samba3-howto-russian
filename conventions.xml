@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE sect1 PUBLIC "-//Samba-Team//DTD DocBook V4.2-Based Variant V1.0//EN" "http://www.samba.org/samba/DTD/samba-doc">
+<sect1>
+    <title>Используемые соглашения</title>
+
+    <para>Следующие условные обозначения использованы во всей книге:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>TOSHARG2 использовано как сокращение названия книги <quote>The Official Samba-3 HOWTO and Reference Guide, Second Edition</quote> Редакторы: Джон Терпстра (John H. Terpstra) и Джелмер Верноой (Jelmer R. Vernooij), Издатель: Prentice Hall, ISBN: 0131882228.</para>
+      </listitem>
+
+      <listitem>
+	<para>S3bE2 использовано как сокращение назавния книги <quote>Samba-3 by Example, Second Edition</quote> Редактор: Джон Терпстра (John H. Terpstra), Издатель: Prentice Hall, ISBN: 013188221X.</para>
+      </listitem>
+
+      <listitem>
+        <para>Имена каталогов и файлов написаны моноширинным шрифтом. Например, <filename>/etc/pam.conf</filename>.</para>
+      </listitem>
+
+      <listitem>
+        <para>Имена исполняемых файлов выделены жирным шрифтом. Например, <command>smbd</command>.</para>
+      </listitem>
+
+      <listitem>
+        <para>Пункты меню и кнопки обозначены жирным. Например, щелкните <guibutton>Далее</guibutton>.</para>
+      </listitem>
+
+      <listitem>
+        <para>Выбор пункта меню обозначен как: <menuchoice><guimenu>Пуск</guimenu><guimenuitem>Панель управления</guimenuitem><guimenuitem>Администрирование</guimenuitem><guimenuitem>Active Directory пользователи и компьютеры</guimenuitem></menuchoice></para>
+      </listitem>
+    </itemizedlist>
+
+  </sect1>
