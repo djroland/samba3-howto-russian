@@ -1,0 +1,703 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE chapter PUBLIC "-//Samba-Team//DTD DocBook V4.2-Based Variant V1.0//EN" "http://www.samba.org/samba/DTD/samba-doc">
+<chapter id="ProfileMgmt">
+<chapterinfo>
+	&author.jht;
+    <pubdate>3 апреля 2003 г.</pubdate>
+</chapterinfo>
+
+<title>Управление профилями рабочего стола</title>
+
+<sect1>
+<title>Особенности и сильные стороны</title>
+
+<para><indexterm><primary>перемещаемые профили</primary></indexterm> Кто-то боится перемещаемых профилей, кто-то их ненавидит, кто-то - любит, а для некоторых администраторов - это просто подарок от Бога.</para>
+
+<para><indexterm><primary>управление перемещаемыми профилями</primary></indexterm> Перемещаемые профили позволяют администратору сделать доступным единый "Рабочий стол" при перемещении пользователя с одной машины на другую. Эта глава предоставляет много информации, касающейся настройки и управления перемещаемых профилей.</para>
+
+<para><indexterm><primary>локальные профили</primary></indexterm> В то время как перемещаемыме профили могут для одних звучать как нирвана, для других они могут быть настоящей проблемой. В частности, пользователи мобильных компьютеров, у которых зачастую нет постоянного сетевого соединения, часто лучше обслуживаются чисто локальными профилями. Эта глава предоставляет информацию, которая поможет администратору Samba справиться с такими ситуациями.</para>
+
+</sect1>
+
+<sect1>
+<title>Перемещаемые профили</title>
+
+<warning>
+<para>Поддержка перемещаемых профилей различна в Windows 9x/Me и Windows NT4/200x.</para>
+</warning>
+
+<para>Перед обсуждением того, как настраивать перемещаемые профили, полезно взглянуть на то, как клиенты Windows 9x/Me и Windows NT4/200x реализуют указанные функции.</para>
+
+<para><indexterm><primary>NetUserGetInfo</primary></indexterm> Клиенты Windows 9x/Me посылают серверу запрос NetUserGetInfo, чтобы получить расположение профиля ползователя. Однако ответ не имеет места для отдельного поля расположения профиля, только для "домашнего" общего ресурса пользователя. Это значит, что хранение профилей Windows 9x/Me ограничивается домашним каталогом пользователя.</para>
+
+
+<para><indexterm><primary>NetSAMLogon</primary></indexterm><indexterm><primary>RPC</primary></indexterm> Клиенты Windows NT4/200x посылают запрос RPC NetSAMLogon, который содержит много полей, включая отдельное поле для расположения пользовательского профиля.</para>
+
+<sect2>
+<title>Настройка Samba для работы с профилями</title>
+
+<para>Этот раздел описывает настройку Samba для поддержки профилей клиентов MS Windows.</para>
+
+<sect3>
+<title>Профили пользователей NT4/200x</title>
+
+<para>Например, для поддержки клиентов NT4/200x установите следующее в секции [global] файла &smb.conf;:</para>
+
+<smbconfblock>
+	<smbconfoption name="logon path">\\сервер_профилей\ресурс_с_профилями\путь_к_профилям\%U\еще_путь_к_профилю</smbconfoption>
+</smbconfblock>
+
+<para>Это обычно выполняется так: <smbconfblock><smbconfoption name="logon path">\\%L\Profiles\%U</smbconfoption></smbconfblock>, где <quote>%L</quote> преобразуется в имя сервера Samba, а <quote>%U</quote> преобразуется в имя пользователя.</para>
+
+<para>Значение по умолчанию для этого параметра - <filename>\\%N\%U\profile</filename>, а именно <filename>\\сервер_samba\имя_пользователя\profile</filename>. Общий ресурс <filename>\\%N\%U</filename> создается автоматически общим ресурсом [homes]. Если для хранения профилей Вы используете сервер Samba, удостоверьтесь, что общий ресурс, указанный в logon path, является просматриваемым. Пожалуйста, обратитесь к странице руководства по &smb.conf; касательно отличий между <quote>%L</quote> и <quote>%N</quote>, так же, как и между <quote>%U</quote> и <quote>%u</quote>.</para>
+
+<note><para><indexterm><primary>logons</primary></indexterm><indexterm><primary>disconnect a connection</primary></indexterm> В то же время клиенты MS Windows NT/200x не отсоединяются от сервера между подключениями. Рекомендуется не использовать имя метасервиса <smbconfsection name="homes"/> в качестве части пути к общему ресурсу с профилями.</para></note>
+</sect3>
+
+<sect3>
+<title>Профили пользователей Windows 9x/Me</title>
+
+<para><indexterm><primary>net use /home</primary></indexterm><indexterm><primary>logon home</primary></indexterm> Для поддержки клиентов Windows 9x/Me Вам необходимо использовать параметр <smbconfoption name="logon home"/> parameter. Samba была исправлена так, что <userinput>net use /home</userinput> сейчас тоже работает, и данные для этого берутся из параметра <parameter>logon home</parameter>.</para>
+
+<para><indexterm><primary>logon home</primary></indexterm><indexterm><primary>\\%L\%U\.profiles</primary></indexterm><indexterm><primary>.profiles</primary></indexterm> Используя параметр <parameter>logon home</parameter>, Вы ограничиваете себя расположением профилей Windows 9x/Me в домашнем каталоге пользователя. Но постойте! Существует трюк, который Вы можете использовать. Если Вы установите следующие параметры в секции <smbconfsection name="[global]"/> Вашего файла &smb.conf;: <smbconfblock><smbconfoption name="logon home">\\%L\%U\.profiles</smbconfoption></smbconfblock>, то тогда Ваши клиенты Windows 9x/Me обязательно поместят профили в подкаталог домашнего каталога, называемый <filename>.profiles</filename> (таким образом, они будут спрятаны).</para>
+
+<para><indexterm><primary>net use /home</primary></indexterm> Кроме того, и <userinput>net use /home</userinput> также будет работать из-за особенности Windows 9x/Me. Она убирает любое название каталога из значения параметра "домашний каталог", и использует только часть его, определяющую сервер и общий ресурс.Таким образом, кажется, будто Вы указали <filename>\\%L\%U</filename> для <smbconfoption name="logon home"/>.</para>
+</sect3>
+
+<sect3>
+<title>Смешанные профили пользователей Windows 9x/Me и NT4/200x</title>
+
+<para>Вы можете поддерживать профили для клиентов Windows 9x и Windows NT установкой сразу обоих параметров - <smbconfoption name="logon home"/> and <smbconfoption name="logon path"/>. Например,</para>
+
+<para><smbconfblock>
+<smbconfoption name="logon home">\\%L\%U\.profiles</smbconfoption>
+<smbconfoption name="logon path">\\%L\profiles\%U</smbconfoption>
+</smbconfblock></para>
+
+<para><indexterm><primary>mixed profile</primary></indexterm> Профили Windows 9x/Me и NT4 (и более поздних версий) не должны храниться в одном и том же месте, поскольку  NT4 и более поздние версии будут сталкиваться с проблемами в окружении со смешанными профилями.</para>
+
+</sect3>
+<sect3>
+<title>Отключение поддержки перемещаемых профилей</title>
+
+<para><indexterm><primary>запрещение перемещаемых профилей</primary></indexterm> Часто задаваемый вопрос <quote>Как я могу задать исопльзование локальных профилей?</quote> или <quote>Как я могу запретить перемещаемые профили?</quote></para>
+
+<para><indexterm><primary>перемещаемые профили</primary></indexterm> Существует три способа сделать это:</para>
+
+<indexterm><primary>настройки реестра Windows</primary><secondary>перемещаемые профили</secondary></indexterm>
+
+<variablelist>
+	<varlistentry>
+		<term>В &smb.conf;</term>:
+		<listitem><para>Включите следующие настройки, и ВСЕ клиенты будут переключены на использование локального профиля: <smbconfoption name="logon home"> </smbconfoption> и <smbconfoption name="logon path"> </smbconfoption></para>
+
+		<para>Аргументы этих параметров должны быть пустыми. Необходимо использовать знак равенства <constant>=</constant>, чтобы особо указать на пустое значение.</para></listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>Реестр MS Windows:</term>
+		<listitem><para><indexterm><primary>MMC</primary></indexterm><indexterm><primary>локальный профиль</primary></indexterm> Используйте Microsoft Management Console (MMC) <command>gpedit.msc</command>, чтобы заставить Вашу машину с MS Windows XP использовать только локальный профиль. Это, конечно, изменяет настройки в реестре. Полный путь к настройке: <screen>
+Local Computer Policy\
+	Computer Configuration\
+		Administrative Templates\
+			System\
+				User Profiles\
+
+Отключено: Разрешать только локальные профили 
+Отключено: Предотвращать перенос изменений перемещаемого профиля на сервер
+</screen></para></listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>Изменение типа профиля</term>
+<indexterm><primary>Типы профилей</primary></indexterm>
+		<listitem><para>В меню 'Пуск' щелкните правой кнопкой на <guiicon>Мой компьютер</guiicon>, выберите <guimenuitem>Свойства</guimenuitem>, щелкните на закладке <guilabel>Профили пользователей</guilabel>, выберите профиль, тип которого Вы хотите изменить с <guimenu>Перемещаемый</guimenu> на <guimenu>Локальный</guimenu>, и щелкните на <guibutton>Изменить тип</guibutton>.</para></listitem>
+	</varlistentry>
+</variablelist>
+
+<para>Обратитесь к руководству по реестру MS Windows Вашей конкретной версии за дальнейшей информацией, касающейся того, какие ключи реестра следует изменить, чтобы принудительно использовать только локальных профилей. </para>
+
+<note><para><indexterm><primary>Windows Resource Kit</primary></indexterm> Специфика преобразования локального профиля в перемещаемый и наоборот различается, в зависимости от того, какую версию MS Windows Вы используете. Проконсультируйтесь в  Microsoft MS Windows Resource Kit Вашей версии Windows для конкретной информации.</para></note>
+
+</sect3>
+</sect2>
+
+<sect2>
+<title>Информация о настройке профилей клиента Windows</title>
+
+<sect3>
+<title>Установка профилей Windows 9x/Me</title>
+
+<para>Когда пользователь входит в сеть на Windows 9x, создается файл user.DAT, так же, как и папки <filename>Главное меню</filename>, <filename>Рабочий стол</filename>, <filename>Программы</filename> и <filename>Вся сеть</filename>. Эти каталоги и их содержимое будет объединено с локальными версиями, хранящимися в <filename>c:\windows\profiles\username</filename>, при последующих входах, выбирая самые свежие версии. Вам необходимо использовать опции секции <smbconfsection name="[global]"/> <smbconfoption name="preserve case">yes</smbconfoption>, <smbconfoption name="short preserve case">yes</smbconfoption> и <smbconfoption name="case sensitive">no</smbconfoption> для того, чтобы сохранить заглавные буквы в ярлыках в любых папках профиля.</para>
+
+<para><indexterm><primary>user.DAT</primary></indexterm><indexterm><primary>user.MAN</primary></indexterm> Файл <filename>user.DAT</filename> содержит все предпочтения пользователя. Если Вы хотите принудительно использовать набор предпочтений, переименуйте файл <filename>user.DAT</filename> в <filename>user.MAN</filename>, и запретите доступ на запись к этому файлу.</para>
+
+<orderedlist>
+	<listitem> <para>На машине Windows 9x/Me перейдите в <guimenu>Панель управления</guimenu> -&gt; <guimenuitem>Пароли</guimenuitem> и выберите закладку <guilabel>Профили пользователей</guilabel>. Выберите необходимый уровень настроек перемещения. Нажмите <guibutton>OK</guibutton>, но не позволяйте компьютеру перезагрузиться.</para> </listitem>
+
+	<listitem> <para>На машине с Windows 9x/Me перейдите к <guimenu>Панель управления</guimenu> -&gt; <guimenuitem>Сеть</guimenuitem> -&gt; <guimenuitem>Клиент для сетей Microsoft</guimenuitem> -&gt; <guilabel>Установки</guilabel>. Выберите <guilabel>Входить в домен Windows NT</guilabel>. Затем убедитесь, что в качестве первичного входа выбрано <guilabel>Клиент для сетей Microsoft</guilabel>. Нажмите <guibutton>OK</guibutton>, и в этот раз позвольте компьютеру перезагрузиться.</para> </listitem>
+</orderedlist>
+
+<para><indexterm><primary>Основной вход</primary></indexterm><indexterm><primary>Клиент для сетей Novell</primary></indexterm><indexterm><primary>Novell</primary></indexterm><indexterm><primary>Вход в Windows</primary></indexterm> В Windows 9x/Me профили загружаются из Основного входа.  Если Ваш Основной вход - <quote>Клиент для сетей Novell</quote>, то профили и сценарии входа будут загружаться с сервера Novell. Если Ваш Основной вход - <quote>Вход в Windows</quote>, то профили будут загружаться с локальной машины &smbmdash; кажущееся противоречие концепции перемещаемых профилей!</para>
+
+<para><indexterm><primary>сервер входа в домен</primary></indexterm> Теперь Вы обнаружите, что диалоговое окно "Вход в сеть Microsoft" содержит <constant>[пользователь, пароль, домен]</constant> вместо обычных <constant>[пользователь, пароль]</constant>. Введите имя домена сервера Samba (или любого другого существующего домена, но имейте в виду, что пользователь будет аутентифицирован именно в этом домене, и именно из него будут загружаться профили - если серверы входа этого домена поддерживают это), имя пользователя и его пароль.</para>
+
+<para>После успешной проверки пароля машина с Windows 9x/Me информирует Вас о том, что <computeroutput>Этот пользователь не пользовался компьютером раньше</computeroutput> и спросит, не надо ли <computeroutput>Создать
+учетную запись для него?</computeroutput> Выберите <guibutton>Да</guibutton>.</para>
+
+<para>После того, как клиент Windows 9x/Me загрузит "Рабочий стол" Вы должны иметь возможность просмотреть содержимое каталога, указанного в параметре <smbconfoption name="logon path"/> на сервере Samba, и проверить, что каталоги <filename>Рабочий стол</filename>, <filename>Главное меню</filename>, <filename>Программы</filename> и <filename>Вся сеть</filename> были созданы.</para>
+
+<para><indexterm><primary>cached locally</primary></indexterm><indexterm><primary>shortcuts</primary></indexterm><indexterm><primary>profile directory</primary></indexterm> Эти каталоги будут кэшироваться локально, и обновляться на сервере после выхода пользователя из системы (если Вы не установили на них доступ только для чтения). Вы обнаружите, что если пользователь создает папки или ярлыки на "рабочем столе", клиент объединит содержимое загруженного профиля с содержимым каталога профиля на локальном клиенте, выбирая самые новые ярлыки и папки из каждого набора.</para>
+
+<para><indexterm><primary>локальный профиль</primary></indexterm><indexterm><primary>удаленный профиль</primary></indexterm><indexterm><primary>права владения</primary></indexterm><indexterm><primary>каталог профиля</primary></indexterm> Если Вы сделали каталоги/файлы на сервере Samba только для чтения, то Вы получите ошибки на машине Windows 9x/Me при входе и выходе, поскольку система будет пытаться объединить локальный и удаленный профили. В основном, если машина Windows 9x/Me сообщает об ошибках, проверьте файловые разрешения UNIX и права владения содержимого каталога профиля на сервере Samba.</para>
+
+<para><indexterm><primary>настройка реестра windows</primary></indexterm><indexterm><primary>путь к профилю</primary></indexterm><indexterm><primary>профили пользователей</primary></indexterm><indexterm><primary>кэш абочего стола</primary></indexterm><indexterm><primary>настройки реестра windows</primary><secondary>путь к профилю</secondary></indexterm> Если у Вас есть проблемы с созданием профилей пользователя, Вы можете сбросить локальный кэш рабочего стола, так, как показано ниже. Когда этот пользователь войдет в систему в следующий раз, он получит сообщение о том, что он <quote>вошел в систему в первый раз</quote>.</para>
+
+
+<orderedlist>
+	<listitem><para>Вместо входа в диалоге [пользователь, пароль, домен] нажмите <guibutton>escape</guibutton>.</para> </listitem>
+
+	<listitem><para>Запустите программу <command>regedit.exe</command> и посмотрите в:</para>
+
+	<para>
+	<filename>HKEY_LOCAL_MACHINE\Windows\CurrentVersion\ProfileList</filename>
+	</para>
+
+	<para>Вы обнаружите список ProfilePath с элементами для каждого пользователя. Отметьте для себя содержимое этого ключа (скорее всего, <filename>c:\windows\profiles\username</filename>), затем удалите ключ <parameter>ProfilePath</parameter> нужного пользователя.</para></listitem>
+
+	<listitem><para>Выйдите из редактора реестра.</para></listitem>
+
+	<listitem><para>Найдите .PWL-файл пользователя, хранящий кэшированный пароль, в каталоге <filename>c:\windows</filename> (как правило), и удалите его.</para></listitem>
+
+	<listitem><para>Выйдите из клиента Windows 9x/Me.</para></listitem>
+
+	<listitem><para>Проверьте содержимое пути к профилю (см. <smbconfoption name="logon path"/>, описанный выше) и удалите файл <filename>user.DAT</filename> или <filename>user.MAN</filename> пользователя; при необходимости сделайте резервную копию.</para></listitem>
+</orderedlist>
+
+<warning><para><indexterm><primary>ProfilePath</primary></indexterm> Перед удалением содержимого каталога, указанного в <parameter>ProfilePath</parameter> (скорее всего, это <filename>c:\windows\profiles\username</filename>), спросите владельца профиля, есть ли у него/нее важные файлы, хранящиеся на его/ее рабочем столе или главном меню. Удалите содержимое каталога <parameter>ProfilePath</parameter> (сделайте резервную копию, если необходимы любые из этих файлов).</para>
+
+<para>Это приведет к удалению локального (спрятанного системного файла только-для-чтения) <filename>user.DAT</filename> в каталоге с профилем, так же, как и локальных каталогов <quote>Рабочий стол,</quote><quote>Вся сеть,</quote><quote>Главное меню,</quote> и <quote>Программы</quote>.</para></warning>
+
+<para><indexterm><primary>log level</primary></indexterm><indexterm><primary>перехватчик пакетов</primary></indexterm><indexterm><primary>ethereal</primary></indexterm><indexterm><primary>netmon.exe</primary></indexterm> Если больше ничего не помогает, увеличьте уровень отладки (log levels) Samba до числа между 3 и 10 и/или запустите программу перехвата пакетов, например, ethereal или <command>netmon.exe</command>, и ищите сообщения об ошибках.</para>
+
+<para><indexterm><primary>перемещаемые профили</primary></indexterm><indexterm><primary>packet trace</primary></indexterm> Если у Вас есть доступ к серверу Windows NT4/200x, то сначала установите перемещаемые профили и/или общий ресурс netlogon (ресурс для входа в сеть) на сервере Windows NT4/200x. Сделайте запись пакетов или проверьте примеры перехвата, поставляемые с сервером Windows NT4/200x, и проверьте, что отличается в эквивалентных перехватах Samba.</para>
+
+</sect3>
+
+<sect3>
+<title>Windows NT4 Workstation</title>
+
+<para>Когда пользователь впервые входит на рабочую станцию Windows NT, создается профиль NTuser.dat. Теперь можно указать расположение профиля через параметр <smbconfoption name="logon path"/>.</para>
+
+<para>Существует параметр, который теперь доступен и для использования с профилями NT: <smbconfoption name="logon drive"/>. Это необходимо установить в <filename>H:</filename> или любой другой диск, и использовать вместе с новым параметром <smbconfoption name="logon home"/>.</para>
+
+<para><indexterm><primary>расширение .PDS</primary></indexterm><indexterm><primary>путь к профилю</primary></indexterm> Элементом списка профилей NT4 является не файл, а каталог. Помощь NT по профилям упоминает о том, что также создается каталог с расширением .PDS. Пользователь при входе должен иметь разрешения на запись, достаточные для того, чтобы создать полный путь к профилю (и папку с расширением .PDS - в том случае, когда она может создаваться).</para>
+
+<para><indexterm><primary>NTuser.DAT</primary></indexterm> В каталоге с профилем Windows NT4 создает больше папок, чем Windows 9x/Me. Она создает <filename>Application Data</filename> и другие, так же, как и <filename>Рабочий стол</filename>, <filename>Вся сеть</filename>, <filename>Главное меню,</filename> and <filename>Программы</filename>. Сам по себе профиль хранится в файле <filename>NTuser.DAT</filename>. Каталог .PDS не хранит ничего, и его назначение в настоящее время неизвестно.</para>
+
+<para><indexterm><primary>NTuser.DAT</primary></indexterm><indexterm><primary>NTuser.MAN</primary></indexterm> Вы можете использовать <application>Системную панель управления</application> для копирования локального профиля на север Samba (смотрите помощь NT по профилям; она также может указать конкретное место в <application>Системной панели управления</application> для Вас). Файл помощи NT также упоминает, что переименование <filename>NTuser.DAT</filename> в <filename>NTuser.MAN</filename> превращает профиль в обязательный.</para>
+
+<para>Регистр профиля имеет значение. Файл должен называться <filename>NTuser.DAT</filename> или - для обязательного профиля - <filename>NTuser.MAN</filename>.</para>
+
+</sect3>
+
+<sect3>
+<title>Windows 2000/XP Professional</title>
+
+<para>Вы должны сначала преобразовать профиль из локального в доменный на рабочей станции MS Windows следующим образом:</para>
+
+<procedure>
+	<step><para>Войдите как <emphasis>локальный</emphasis> администратор рабочей станции.</para></step>
+
+	<step><para>Щелкните правой кнопкой иконку <guiicon>Мой компьютер</guiicon> и выберите <guimenuitem>Свойства</guimenuitem>.</para></step>
+
+	<step><para>Щелкните вкладку <guilabel>Профили пользователей</guilabel>.</para></step>
+
+	<step><para>Выберите профиль, который хотите преобразовать (шелкните его один раз).</para></step>
+
+	<step><para>Щелкните кнопку <guibutton>Копировать/</guibutton>.</para></step>
+
+	<step><para>В диалоге <guilabel>Разрешить использование</guilabel> щелкните <guibutton>Изменить</guibutton>.</para></step>
+
+	<step><para>Щелкните на области <guilabel>Искать в</guilabel>, в которой выведено имя машины. Когда Вы щелкнете там, откроется диалог выбора. Щелкните по домену, для которого профиль должен быть доступным.</para>
+
+	<note><para>Вам будет необходимо войти в сеть, если откроется диалог входа. Например, соединитесь как <replaceable>ДОМЕН</replaceable>\root, пароль <replaceable>Ваш_пароль</replaceable></para></note> </step>
+
+	<step><para>Чтобы сделать доступным использование профиля для всех,  выберите <quote>Everyone</quote>.</para></step>
+
+	<step><para>Щелкните <guibutton>OK</guibutton>, и окно выбора закроется.</para></step>
+
+	<step><para>Теперь щелкните <guibutton>OK</guibutton>, чтобы создать профиль в пути, который Вы назвали.</para></step>
+</procedure>
+
+<para>Готово. Теперь у Вас есть профиль, который можно редактировать с использованием инструмента <command>profiles</command> Samba.</para>
+
+<note><para>В Windows NT/200x использование обязательных профилей включает использование MS Exchange для хранения почтовых данных, и они не хранятся в профиле. Это предохраняет профили рабочего стола от превращения в неупотребимые.</para></note>
+
+<sect4>
+<title>Windows XP Service Pack 1</title>
+	<para>В Windows XP (или, может быть, только в Windows XP service pack 1) есть новая проверка безопасности. Она может быть отключена групповой политикой Active Directory. Политика называется: <screen>
+Конфигурация компьютера\Административные шаблоны\Система\Профили пользователей\
+          Не проверять владение папками перемещаемых профилей
+</screen></para>
+
+	<para>Это надо установить во <constant>Включено</constant>.</para>
+
+	<para>Имеет ли новая версия Samba аналог Active Directory? Если да, то Вы можете с его помощью установить эту политику.</para>
+
+	<para>Если Вы не можете устанавливать групповые политики в Samba, то Вы можете установить политику локально на каждой машине. Если хотите попробовать, то поступайте так:</para>
+
+
+<procedure>
+	<step><para>На рабочей станции XP войдите с административной учетной записью.</para></step>
+
+	<step><para>Щелкните <guimenu>Пуск</guimenu> -&gt; <guimenuitem>Выполнить</guimenuitem>.</para></step>
+	<step><para>Наберите <command>mmc</command>.</para></step>
+	<step><para>Щелкните <guibutton>OK</guibutton>.</para></step>
+	<step><para>Должна появиться Microsoft Management Console (консоль управления Microsoft).</para></step>
+	<step><para>Щелкните на <guimenu>Файл</guimenu> -&gt; <guimenuitem>Добавить/Удалить оснастку</guimenuitem> -&gt; <guimenuitem>Добавить</guimenuitem>.</para></step> 
+	<step><para>Дважды щелкните <guiicon>Групповая политика</guiicon>.</para></step> 
+	<step><para>Щелкните на кнопке <guibutton>Закончить</guibutton> -&gt; <guibutton>Закрыть</guibutton>.</para></step> 
+	<step><para>Щелкните <guibutton>OK</guibutton>.</para></step>
+	<step><para>В окне <quote>Корень консоли</quote> разверните <guiicon>Политики локального компьютера</guiicon> -&gt; <guiicon>Конфигурация компьютера</guiicon> -&gt; <guiicon>Административные шаблоны</guiicon> -&gt; <guiicon>Система</guiicon> -&gt; <guiicon>Профили пользователей</guiicon>.</para></step>
+	<step><para>Дважды щелкните по <guilabel>Не проверять владение папками перемещаемого профиля</guilabel>.</para></step>
+	<step><para>Выберите <guilabel>Включить</guilabel>.</para></step>
+	<step><para>Щелкните <guibutton>OK</guibutton>.</para></step>
+	<step><para>Закройте консоль целиком. Вам не требуется сохранять настройки (это касается настроек консоли, а не политик, которые Вы изменили).</para></step>
+	<step><para>Перезагрузитесь.</para></step>
+</procedure>
+</sect4>
+</sect3>
+</sect2>
+
+<sect2>
+<title>Сервис очистки пользовательских профилей</title>
+
+<para>Существуют некоторые ситуации, которые приводят к тому, что кэшированная локальная копия перемещаемого профиля не удаляется при выходе, даже если установлена политика, которая явным образом указывает системе это делать. Чтобы разобраться с такими ситуациями, была создана специальная служба. Приложение <command>UPHClean</command> (User Profile Hive Cleanup) может быть установлено как служба в Windows NT4/2000/XP Professional и Windows 2003.</para>
+
+<para>Пакет UPHClean можно загрузить с веб-сайта User Profile Hive Cleanup Service<footnote>http://www.microsoft.com/downloads/details.aspx?FamilyID=1B286E6D-8912-4E18-B570-42470E2F3582&amp;displaylang=en</footnote>.</para>
+
+</sect2>
+
+<sect2>
+<title>Использование общего профиля с рабочими станциями Windows 9x/Me и NT4/200x/XP</title>
+
+<para><indexterm><primary>использование общих профилей</primary></indexterm><indexterm><primary>содержимое профиля</primary></indexterm> Использование общего профиля для нескольких версий Windows не рекомендуется. Профили рабочего стола - меняющийся феномен, и профили для поздних версий клиентов MS Windows добавляют особенности, которые могут взаимодействовать с ранними версиями клиентов MS Windows. Возможно, вот наиболее логичная причина не смешивать профили: при выходе из ранней версии MS Windows, старый формат содержимого профиля может переписать информацию, которая принадлежит новой версии, приведя тем самым к потере информации, содержащейся в профиле, при входе в более новую версию MS Windows.</para>
+
+<para>Если Вы все-таки хотите использовать общие меню Пуск и Рабочий стол с Windows 9x/Me, Вы должны указать общее место для профилей. Параметры &smb.conf;, которые должны быть установлены одинаково -  <smbconfoption name="logon path"/> и <smbconfoption name="logon home"/>.</para>
+
+<para><indexterm><primary>user.DAT</primary></indexterm><indexterm><primary>NTuser.DAT</primary></indexterm> Если Вы установили все правильно, Вы обнаружите отдельные файлы <filename>user.DAT</filename> и <filename>NTuser.DAT</filename> в одном каталоге с профилями.</para>
+
+</sect2>
+
+<sect2>
+<title>Перенос профилей с сервера Windows NT4/200x на Samba</title>
+
+<para><indexterm><primary>зашифрованные пароли</primary></indexterm> Ничто не препятствует Вам указать любой путь, который Вы хотите, для размещения профилей пользователей. Следовательно, Вы могли бы указать, что профиль хранится на сервере Samba или любом другом сервере SMB, по крайней мере, если этот сервер SMB поддерживает зашифрованные пароли.</para>
+
+<sect3 id="profilemigrn">
+<title>Инструменты управления профилями Windows NT4</title>
+
+<para><indexterm><primary>resource kit</primary></indexterm> К сожалению, информация из resource kit является специфичной для MS Windows NT4/200x. Корректный resource kit требуется для каждой платформы.</para>
+
+<para>Вот краткое руководство:</para>
+
+<procedure>
+<title>Процедура переноса профилей</title>
+
+	<step><para>На Вашем контроллере домена NT4 щелкните правой кнопкой на <guiicon>Мой компьютер</guiicon>, затем выберите <guilabel>Свойства</guilabel>, затем закладку <guilabel>профили пользователей</guilabel>.</para></step>
+
+	<step><para>Выберите профиль пользователя, который хотите перенести, и щелкните на нем.</para>
+
+	<note><para>Я использую выражение <quote>перенос</quote> не совсем точно. Вы можете скопировать профиль, чтобы создать групповой профиль. Вы можете дать пользователю <parameter>Все</parameter> права на профиль, в который Вы копируете. Именно это Вам надо сделать, потому что Ваш домен Samba не участвует в доверительных отношениях с Вашим PDC NT4.</para></note></step>
+
+	<step><para>Щелкните кнопку <guibutton>Копировать/</guibutton>.</para></step>
+
+	<step><para>В диалоге <guilabel>Скопировать профиль в</guilabel> добавьте Ваш новый путь, например, <filename>c:\gde_to\chto_to</filename></para></step>
+
+	<step><para>Щелкните на <guibutton>Изменить</guibutton> в диалоговом окне  <guilabel>Позволить использование</guilabel>.</para></step>
+
+	<step><para>Щелкните на группе <quote>Все</quote>, щелкните на <guibutton>OK</guibutton>. Это закроет диалоговое окно <quote>Выберите пользователя</quote>.</para></step>
+
+	<step><para>Теперь щелкните <guibutton>OK</guibutton>.</para></step>
+</procedure>
+
+<para>Проделайте это для всех профилей, которые необходимо перенести.</para>
+
+</sect3>
+
+<sect3>
+<title>Заметки на полях</title>
+
+
+<para><indexterm><primary>SID</primary></indexterm><indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>info</tertiary></indexterm> Вам необходимо узнать SID Вашего домена NT4. Вы можете испльзовать для этого <command>net rpc info</command>. Смотрите <link linkend="NetCommand">Команда Net</link>, <link linkend="netmisc1">Другие разные операции</link> для большей информации.</para>
+
+</sect3>
+
+<sect3>
+<title>moveuser.exe</title>
+
+<para><indexterm><primary>moveuser.exe</primary></indexterm> В Windows 200x professional resource kit есть <command>moveuser.exe</command>. <command>moveuser.exe</command> изменяет безопасность профиля с одного пользователя на другого. Это позволяет менять учетную запись домена или имя пользователя.</para>
+
+<para>Эта команда похожа на утилиту Samba <command>profiles</command>.</para>
+
+</sect3>
+
+<sect3>
+<title>Получить SID</title>
+
+<para><indexterm><primary>SID</primary></indexterm><indexterm><primary>GetSID.exe</primary></indexterm> Вы можете узнать SID с помощью команды <command>GetSID.exe</command> из Windows NT Server 4.0 Resource Kit.</para>
+
+<para>Windows NT 4.0 хранит информацию о локальных профилях в реестре по следующему пути: <filename>HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList</filename></para>
+
+<para>В разделе ProfileList будут подразделы, названные по SID'ам пользователей, входивших на этот компьютер. (Чтобы найти информацию о профиле пользователя, чей локально кэшированный профиль Вы хотите переместить, определите SID пользователя утилитой <command>GetSID.exe</command>.) Внутри подраздела соответствующего пользователя Вы увидите строковое значение, названное <parameter>ProfileImagePath</parameter>.</para>
+
+</sect3>
+</sect2>
+</sect1>
+
+<sect1>
+<title>Обязательные профили</title>
+
+<para><indexterm><primary>обязательные профили</primary></indexterm> Обязательный профиль - профиль, который не может быть переписан пользователем. Во время сессии пользователя можно изменять настройки окружения; однако при выходе пользователя из системы все сделанные изменения будут утеряны. Если необходимо не позволять пользователю вообще изменять окружение рабочего стола, то это должно быть сделано при помощи настройки политики. Смотри <link linkend="PolicyMgmt">Политики системы и учетных записей</link>.</para>
+
+<note><para><indexterm><primary>модуль фальшивых разрешений</primary></indexterm><indexterm><primary>модуль VFS</primary></indexterm><indexterm><primary>fake_perms</primary></indexterm>Ни при каких условиях каталог с профилем или его содержимое не должно делаться только-для-чтения, поскольку это может сделать использование профиля невозможным. Если необходимо сделать профиль только-для-чтения в файловой системе UNIX, это можно сделать, но в этом случае Вам абсолютно необходим модуль VFS <command>fake-permissions</command>, чтобы указать клиентам MS Windows NT/200x/XP, что у пользователя есть разрешения на запись в профиль. Смотрите  <link linkend="fakeperms">моудль VFS fake_perms</link>.</para></note>
+
+<para><indexterm><primary>NTUser.MAN</primary></indexterm><indexterm><primary>NTUser.DAT</primary></indexterm> Для MS Windows NT4/200x/XP процедура, показанная в <link linkend="profilemigrn">Перенос профиля с сервера Windows NT4/200x на Samba</link>, также может использоваться для создания обязательных профилей. Чтобы преобразовать групповой профиль в обязательный, просто найдите файл <filename>NTUser.DAT</filename> в скопированном профиле и переименуйте его в <filename>NTUser.MAN</filename>.</para>
+
+<para><indexterm><primary>User.MAN</primary></indexterm> Для MS Windows 9x/Me именно файл <filename>User.DAT</filename> необходимо переименовать в <filename>User.MAN</filename>, чтобы получить в результате обязательный профиль.</para>
+
+</sect1>
+
+<sect1>
+<title>Создание и управление групповыми профилями</title>
+
+<para><indexterm><primary>групповые профили</primary></indexterm><indexterm><primary>шаблон</primary></indexterm><indexterm><primary>инструмент для переноса профилей</primary></indexterm><indexterm><primary>права доступа к профилю</primary></indexterm> Большая часть организаций состоит из отделов. В этом факте есть приятная польза, поскольку обычно пользователи в департаменте нуждаются в одних и тех же приложениях и организации рабочего стола. MS Windows NT4/200x/XP позволяют использовать гоупповые профили. Групповой профиль - это шаблон, который сначала создается с использованием шаблонного (примерного) пользователя.  Затем с использованием инструмента для переноса профилей (смотри выше) профилю назначаются права доступа группы пользователей, которой будет выдан доступ к групповому профилю.</para>
+
+<para><indexterm><primary>User Manager</primary></indexterm> Следующий шаг очень важен. Вместо назначения группового профиля пользователям (с использованием User Manager) на <quote>по-пользовательской</quote> основе, модифицированный профиль назначается самой группе.</para>
+
+<note><para>Будьте осторожны с групповыми профилями. Если пользователь, входящий в группу, имеет свой личный профиль, результатом будет смесь (слияние) двух профилей.</para></note>
+
+</sect1>
+
+<sect1>
+<title>Профиль по умолчанию для пользователей Windows</title>
+
+<para><indexterm><primary>профиль по умолчанию</primary></indexterm><indexterm><primary>ключи реестра</primary></indexterm> MS Windows 9x/Me и NT4/200x/XP будут использовать профиль по умолчанию для всех тех пользователей, которые не имеют существующего профиля. Вооружившись знанием о месте расположения профилей по умолчанию на рабочей станции Windows и зная, какие ключи реестра влияют на путь, по которому создается профиль по умолчанию, можно модифицировать профиль на тот, который был оптимизирован для организации. Это дает значительные административные преимущества.</para>
+
+<sect2>
+<title>MS Windows 9x/Me</title>
+
+<para><indexterm><primary>Редактор системных политик</primary></indexterm><indexterm><primary>реестр</primary></indexterm> Чтобы включить профили по умолчанию в Windows 9x/Me, Вы можете либо использовать <application>Редактор системных политик Windows 98</application>, либо изменять реестр напрямую.</para>
+
+<para>Чтобы включить поддержку пользовательских профилей по умолчанию в Windows 9x/Me, запустите <application>System Policy Editor</application>, затем выберите <guimenu>Файл</guimenu> -&gt; <guimenuitem>Открыть реестр</guimenuitem>. Далее щелкните иконку <guiicon>Локальный компьютер</guiicon>, щелкните на <guilabel>Система Windows 98</guilabel>, выберите <guilabel>Профили пользователей</guilabel>, и щелкните на кнопке включения. Не забудьте сохранить изменения в реестре.</para>
+
+<para><indexterm><primary>regedit.exe</primary></indexterm> Чтобы изменить реестр напрямую, запустите <application>Редактор реестра</application> (<command>regedit.exe</command>) и выберите ветвь <filename>HKEY_LOCAL_MACHINE\Network\Logon</filename>. Теперь добавьте ключ типа DWORD с именем <quote>User Profiles.</quote> Чтобы включить профили пользователей, установите этот ключ в 1; чтобы выключить - в 0.</para>
+
+<sect3>
+<title>Работа с профилями Windows 9x/Me</title>
+
+<para>При входе пользователя на машину Windows 9x/Meпуть к локальным профилям <filename>HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\ProfileList</filename> проверяется на предмет наличие записи для этого пользователя.</para>
+
+<para>Если у пользователя есть запись в этом месте реестра, Windows 9x/Me проверяет наличие локально кэшированной версии профиля пользователя. Windows 9x/Me также проверяет домашний каталог пользователя (или другой указанный каталог, если местоположение было изменено) на сервере на наличие профиля пользователя. Если профили существуют в обоих местах, будет использоваться более новый из двух. Если профиль пользователя существует на сервере и отсутствует на локальной машине, загружается и используется профиль с сервера. Если профиль пользователя существует только на локальной машине, используется эта копия.</para>
+
+<para>Если профиль пользователя не найден ни в одном из мест, профиль пользователя по умолчанию с машины Windows 9x/Me используется и копируется в новую папку, созданную для этого пользователя. При выходе любые изменения, которые сделал пользователь, записываются в локальный профиль пользователя. Если у пользователя есть перемещаемый профиль, изменения записываются в профиль пользователя на сервере.</para>
+
+</sect3>
+</sect2>
+
+<sect2>
+<title>MS Windows NT4 Workstation</title>
+
+<para>На MS Windows NT4 профиль пользователя по умолчанию находится в <filename>%SystemRoot%\Profiles</filename>, что в установке по умолчанию превращается в <filename>C:\Windows NT\Profiles</filename>. В свежей установке в этом каталоге будут три каталога: <filename>Administrator</filename>, <filename>All Users,</filename> и <filename>Default User</filename>.</para>
+
+<para>Каталог <filename>All Users</filename> содержит настройки меню, которые являются общими для всех пользователей системы. Каталог <filename>Default User</filename> содержит элементы, которые настраиваются для каждого пользователя в зависимости от выбранных/созданных установок профиля.</para>
+
+<para>Когда новый пользователь впервые входит на машину с MS WIndows NT4, новый профиль создается из:</para>
+
+<itemizedlist>
+	<listitem><para>Настройки для всех пользователей</para></listitem>
+	<listitem><para>Настроек пользователя по умолчанию (содержит файл <filename>NTUser.DAT</filename>).</para></listitem>
+</itemizedlist>
+
+<para><indexterm><primary>NTConfig.POL</primary></indexterm> Когда пользователь выполняет вход в сеть на машине MS Windows NT4, являющейся участником домена безопасности Microsoft, для обработки профиля выполняются следующие шаги:</para>
+
+<procedure>
+	<step> <para>Именно информация об учетной записи пользователя, получаемая в процессе входа, содержит расположение профиля рабочего стола пользователя. Путь к профилю может быть для машины локальным или может располагаться на сетевом общем ресурсе. Если в месте, указанном путем из учетной записи пользователя, существует профиль, то он копируется в <filename>%SystemRoot%\Profiles\%USERNAME%</filename>. Затем этот профиль наследует настройки профиля <filename>All Users</filename>, расположенного в <filename>%SystemRoot%\Profiles</filename>.</para> </step>
+
+	<step> <para>Если в учетной записи пользователя указан путь к профил, но в указанном месте он не существует, то создается новый профиль в каталоге <filename>%SystemRoot%\Profiles\%USERNAME%</filename> путем чтения профиля <filename>Default User</filename>.</para> </step>
+
+	<step> <para><indexterm><primary>NTConfig.POL</primary></indexterm><indexterm><primary>NETLOGON</primary></indexterm><indexterm><primary>сервер аутентификации</primary></indexterm><indexterm><primary>сервер входа</primary></indexterm><indexterm><primary>HKEY_CURRENT_USER</primary></indexterm> Если общий ресурс NETLOGON на сервере аутентификации (сервере входа) содржит файл политик (<filename>NTConfig.POL</filename>), то его содержимое применяется к <filename>NTUser.DAT</filename>, который применяется к ветви реестра <filename>HKEY_CURRENT_USER</filename>.</para> </step>
+
+	<step> <para>При выходе пользователя из сети, если профиль перемещаемый, то он записывается в место расположения профиля. Файл <filename>NTuser.DAT</filename> повторно создается из содержимого <filename>HKEY_CURRENT_USER</filename>. Таким образом, при повторном входе в сеть даже если на общем ресурсе NETLOGON уже и не существует <filename>NTConfig.POL</filename>, действие предыдущего <filename>NTConfig.POL</filename> будет сохраняться в профиле. Этот эффект известен как клеймение (в оригинале - татуирование - прим. перев.).</para> </step>
+</procedure>
+
+<para>Профили MS Windows NT4 могут быть <emphasis>локальными</emphasis> или <emphasis>перемещаемыми</emphasis>. Локальный профиль хранится в <filename>%SystemRoot%\Profiles\%USERNAME%</filename>. Перемещаемый профиль также хранится там же до тех пор, пока не будет создан следующий ключ реестра: <screen>
+HKEY_LOCAL_MACHINE\SYSTEM\Software\Microsoft\Windows NT\CurrentVersion\
+winlogon\"DeleteRoamingCache"=dword:0000000
+</screen> В этом случае локальная копия (в <filename>%SystemRoot%\Profiles\%USERNAME%</filename>) будет удалена при входе.</para>
+
+<para><indexterm><primary>regedt32</primary></indexterm> В MS Windows NT4 расположения по умолчанию для общих ресурсов типа <filename>Мои документы</filename> могут быть перенаправлены на сетевой общий ресурс модификацией следующих ключей реестра. Эти изменения могут быть сделаны с использованием System Policy Editor (редактора системных политик). Эта работа может потребовать от Вас создания собственного шаблона расшрений для редактора политик, чтобы иметь возможность проделать это из командной строки. Другой способ сделать это - сначала создать профиль пользователя по умолчанию, затем, зайдя под именем этого пользователя в систему, запустить <command>regedt32</command> для изменения установок ключей.</para>
+
+<para>Ветвь реестра, которая влияет на поведение каталогов, являющихся частью профиля пользователя по умолчанию на Windows NT4: <screen>
+HKEY_CURRENT_USER
+	\Software
+		\Microsoft
+			\Windows
+				\CurrentVersion
+					\Explorer
+						\User Shell Folders
+</screen><indexterm><primary>настройки реестра Windows</primary><secondary>расположение профиля по умолчанию</secondary></indexterm></para>
+
+<para>Вышеуказанная ветвь реестра содержит список автоматически управляемых каталогов (в оригинале "папок" - прим. перев.) Элементы списка по умолчанию показаны в <link linkend="ProfileLocs">следующей таблице</link>.</para>
+
+<table frame="all" id="ProfileLocs">
+	<title>Значения по умолчанию ключей с расположением папок оболочки</title>
+	<tgroup cols="2">
+		<colspec align="left"/>
+		<colspec align="left"/>
+	<thead>
+		<row><entry>Имя</entry><entry>Значение по умолчанию</entry></row>
+	</thead>
+	<tbody>
+		<row><entry>AppData</entry><entry>%USERPROFILE%\Application Data</entry></row>
+		<row><entry>Рабочий стол</entry><entry>%USERPROFILE%\Desktop</entry></row>
+		<row><entry>Избранное</entry><entry>%USERPROFILE%\Favorites</entry></row>
+		<row><entry>Вся сеть</entry><entry>%USERPROFILE%\NetHood</entry></row>
+		<row><entry>Принтеры и факсы</entry><entry>%USERPROFILE%\PrintHood</entry></row>
+		<row><entry>Программы</entry><entry>%USERPROFILE%\Меню Пуск\Программы</entry></row>
+		<row><entry>Документы</entry><entry>%USERPROFILE%\Recent</entry></row>
+		<row><entry>Отправить</entry><entry>%USERPROFILE%\SendTo</entry></row>
+		<row><entry>Меню Пуск</entry><entry>%USERPROFILE%\Start Menu</entry></row>
+		<row><entry>Автозагрузка</entry><entry>%USERPROFILE%\Start Menu\Programs\Startup</entry></row>
+	</tbody>
+	</tgroup>
+</table>
+
+<para>Ключ реестра, хранящий расположение начальных настроек профиля: <screen>
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\
+User Shell Folders
+</screen></para>
+
+<para>Элементы списка по умолчанию показаны в <link linkend="regkeys">Начальные значения ключей реестра настроек профиля</link>.</para>
+
+<table frame="all" id="regkeys">
+	<title>Defaults of Profile Settings Registry Keys</title>
+	<tgroup cols="2">
+		<colspec align="left"/>
+		<colspec align="left"/>
+	<tbody>
+		<row><entry>Общий рабочий стол</entry><entry>%SystemRoot%\Profiles\All Users\Desktop</entry></row>
+		<row><entry>Общие Программы</entry><entry>%SystemRoot%\Profiles\All Users\Programs</entry></row>
+		<row><entry>Общее меню Пуск</entry><entry>%SystemRoot%\Profiles\All Users\Start Menu</entry></row>
+		<row><entry>Общпя Автозагрузка</entry><entry>%SystemRoot%\Profiles\All Users\Start Menu\Programs\Startup</entry></row>
+	</tbody>
+	</tgroup>
+</table>
+
+</sect2>
+
+<sect2>
+<title>MS Windows 200x/XP</title>
+
+<note><para><indexterm><primary>GPO</primary></indexterm><indexterm><primary>Windows XP Home Edition</primary></indexterm><indexterm><primary>ADS</primary></indexterm><indexterm><primary>безопасность домена</primary></indexterm> MS Windows XP Home Edition использует профили пользователей, но не может участвовать в безопасности домена, не может входить в домен типа NT/ADS и, таким образом,  может получать профиль только от себя. Несмотря на то, что у этого есть свои преимущества, красота тех клиентов MS Windows, которые могут участвовать в безопасности домена, именно в том, что они позволяют администратору создать глобальный профиль по умолчанию, и использовать его принудительно через объекты групповой политики (Group Policy Objects - GPOs).</para></note>
+
+<para><indexterm><primary>Пользователь по умолчанию</primary></indexterm> Когда новый пользователь впервые входит на машину MS Windows 200x/XP, профиль по умолчанию загружается из <filename>C:\Documents and Settings\Default User</filename>. Администратор может модифицировать или изменить содержимое этого каталога, и MS Windows 200x/XP с радостью будет использовать его. Этот подход далек от оптимального, поскольку он потребует копирования нового профиля по умолчанию на каждую клиентскую рабочую станцую MS Windows 200x/XP.</para>
+
+<para><indexterm><primary>NETLOGON</primary></indexterm> Когда MS Windows 200x/XP участвует в контексте безопасности домена и профиль пользователя по умолчанию не найден, клиент будет искать профиль по умолчанию в общем ресурсе NETLOGON сервера аутентификации. На языке MS Windows это <filename>%LOGONSERVER%\NETLOGON\Default User,</filename> и если это существует, система скопирует профиль на рабочую станцию в <filename>C:\Documents and Settings\</filename> под использованным именем входа в сеть Windows.</para>
+
+<note> <para>Этот путь переводится на язык Samba в общий ресурс &smb.conf;<smbconfsection name="[NETLOGON]"/>. Каталог должен быть создан непосредственно в корневом каталоге общего ресурса, и должен называться <filename>Default User</filename>.</para> </note>
+
+<para>Если профиль по умолчанию не существует в этом месте, то MS Windows 200x/XP будет использовать локальный профиль по умолчанию.</para>
+
+<para>При выходе пользовательский профиль рабочего стола сохраняется в пути, указанном в настройках реестра, касающихся этого пользователя. Если во время процесса входа какие-либо специфические политики не были созданы или переданы клиенту (что Samba делает автоматически), то профиль пользователя сохраняется только на локальной машине в <filename>C:\Documents and Settings\%USERNAME%</filename>.</para>
+
+<para>Желающие изменить поведение по умолчанию могут сделать это с помощью одного из трех методов:</para>
+
+<itemizedlist>
+	<listitem> <para>Изменить ключи реестра вручную и поместить новый профиль по умолчанию в корень общего ресурса NETLOGON. Это не рекомендуется, поскольку требует интенсивного обслуживания.</para> </listitem>
+
+	<listitem> <para>Создать файл NTConfig.POL в стиле NT4, в котором будет указано это поведение, и рапсоложить этот файл в корне общего ресурса NETLOGON вместе с новым профилем по умолчанию.</para> </listitem>
+
+	<listitem> <para>Создайте объект групповой политики, который принудительно устанавливает это через Active Directory,  и поместите новый профиль по умолчанию в общий ресурс NETLOGON.</para> </listitem>
+</itemizedlist>
+
+<para>Ключ реестра, который воздействует на поведение каталогов, являющихся частью профиля пользователя по умолчанию и контролируемых записями в Windows 200x/XP:</para>
+
+<para> <filename>HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders\</filename> </para>
+
+<para>Этот ключ реестра содержит список автоматически управляемых каталогов. Значения по умолчанию показаны в <link linkend="defregpthkeys">следующей таблице</link><indexterm><primary>настройки реестра windows</primary><secondary>расположение профиля по умолчанию</secondary></indexterm></para>
+
+
+<table frame="all" id="defregpthkeys">
+	<title>Начальные значения ключей реестра, содержащие пути профиля Default User</title>
+	<tgroup cols="2">
+		<colspec align="left"/>
+		<colspec align="left"/>
+	<thead>
+		<row><entry>Имя</entry><entry>Значение по умолчанию</entry></row>
+	</thead>
+	<tbody>
+		<row><entry>AppData</entry><entry>%USERPROFILE%\Application Data</entry></row>
+		<row><entry>Кэш</entry><entry>%USERPROFILE%\Local Settings\Temporary Internet Files</entry></row>
+		<row><entry>Cookies</entry><entry>%USERPROFILE%\Cookies</entry></row>
+		<row><entry>Рабочий стол</entry><entry>%USERPROFILE%\Desktop</entry></row>
+		<row><entry>Избранное</entry><entry>%USERPROFILE%\Favorites</entry></row>
+		<row><entry>History</entry><entry>%USERPROFILE%\Local Settings\History</entry></row>
+		<row><entry>Local AppData</entry><entry>%USERPROFILE%\Local Settings\Application Data</entry></row>
+		<row><entry>Local Settings</entry><entry>%USERPROFILE%\Local Settings</entry></row>
+		<row><entry>Мои рисунки</entry><entry>%USERPROFILE%\My Documents\My Pictures</entry></row>
+		<row><entry>Вся сеть</entry><entry>%USERPROFILE%\NetHood</entry></row>
+		<row><entry>Personal</entry><entry>%USERPROFILE%\Мои документы</entry></row>
+		<row><entry>Принтеры и факсы</entry><entry>%USERPROFILE%\PrintHood</entry></row>
+		<row><entry>Программы</entry><entry>%USERPROFILE%\Меню Пуск\Программы</entry></row>
+		<row><entry>Документы</entry><entry>%USERPROFILE%\Recent</entry></row>
+		<row><entry>Отправить</entry><entry>%USERPROFILE%\SendTo</entry></row>
+		<row><entry>Меню Пуск</entry><entry>%USERPROFILE%\Start Menu</entry></row>
+		<row><entry>Автозагрузка</entry><entry>%USERPROFILE%\Start Menu\Programs\Startup</entry></row>
+		<row><entry>Templates</entry><entry>%USERPROFILE%\Templates</entry></row>
+	</tbody>
+	</tgroup>
+</table>
+
+<para>Существует также запись <quote>Default</quote>, у которой не установлено значение. Этот элемент имеет тип <constant>REG_SZ</constant>; все остальные имеют тип <constant>REG_EXPAND_SZ</constant>.</para>
+
+<para>Если все  папки хранятся в выделенном месте на сетевом сервере, то проявляется большая разница в скорости обработки перемещаемых профилей пользователей. Это значит, что нет необходимости писать файл PST Outlook'а через сеть при каждом входе и выходе.</para>
+
+<para>Чтобы установить это в сетевое расположение, Вы могли бы использовать следующие примеры: <screen>
+%LOGONSERVER%\%USERNAME%\Default Folders
+</screen> Это сохраняет папки в домашнем каталоге пользователя в каталоге, названном <filename>Default Folders</filename>. Вы также могли бы использовать: <screen>
+\\<replaceable>SambaServer</replaceable>\<replaceable>FolderShare</replaceable>\%USERNAME%
+</screen></para>
+
+<para>в этом случае папки по умолчанию хранятся на сервере, названном <replaceable>SambaServer</replaceable> в общем ресурсе, названном <replaceable>FolderShare</replaceable> в каталоге, названной по имени пользователя MS Windows, видимом файловой системой Linux/UNIX.</para>
+
+<para>Пожалуйста, заметьте, что если Вы создали общий ресурс для профиля по умолчанию, Вы <emphasis>должны</emphasis> перенести профиль пользователя (по умолчанию или настроенный) в него.</para>
+
+<para>Профили MS Windows 200x/XP могут быть <emphasis>локальными</emphasis> или <emphasis>перемещаемыми</emphasis>. Перемещаемый профиль кэшируется локально до тех пор, пока не будет создан ключ реестра: <indexterm><primary>удалить перемещаемые профили</primary></indexterm></para>
+
+
+<para> <programlisting> HKEY_LOCAL_MACHINE\SYSTEM\Software\Microsoft\Windows NT\CurrentVersion\
+	winlogon\"DeleteRoamingCache"=dword:00000001</programlisting></para>
+
+<para>В этом случае локальная кэшированная копия будет удалена при запуске.</para> 
+</sect2> 
+</sect1>
+
+<sect1> <title>Общие ошибки</title>
+
+<para>Далее следуют некоторые типичные ошибки, проблемы и вопросы, о которых говорилось в списке рассылки Samba.</para>
+
+<sect2>
+<title>Настройка перемещаемых профилей для нескольких пользователей или групп</title>
+
+<para>С Samba-2.2.x Вы могли выбирать, включена или выключена поддержка перемещаемых профилей. Эта настройка - только глобальная. Значение по умолчанию - использовать перемещаемые профили, и путь к ним по умолчанию - домашний каталог пользователя.</para>
+
+<para>Если запрещено глобально, никто не сможет использовать перемещаемые профили.</para>
+
+<para>С Samba-3 Вы можете иметь глобальные настройки профилей в &smb.conf;, и Вы можете перекрывать их отдельно для каждого пользователя с помощью Domain User Manager (так же, как с MS Windows NT4/200x).</para>
+
+<para>В любом случае Вы можете настроить только один профиль для каждого пользователя. Этот профиль может быть:</para>
+
+<itemizedlist>
+	<listitem><para>Уникальный профиль для этого пользователя.</para></listitem>
+	<listitem><para>Обязательный профиль (тот, что пользователь не может изменить).</para></listitem>
+	<listitem><para>Групповой профиль (на самом деле должен быть обязательным &smbmdash; то есть неизменяемым).</para></listitem>
+</itemizedlist>
+
+</sect2>
+
+<sect2> <title>Невозможность использования перемещаемых профилей</title>
+
+<para>Пользователь запросил следующее: <quote> Я не хочу, чтобы работали перемещаемые профили. Я хочу, чтобы у пользователей были только локальные профили. Я потерялся в этой проблеме. Последние два дня я испробовал все, гуглил в Интернете, но не нашел полезных подсказок. Пожалуйста, помогите мне. </quote></para>
+
+<para>Вот эти опции:</para>
+
+<variablelist>
+	<varlistentry>
+		<term>Локальные профили</term> <listitem><para>Мне не известно о ключах реестра, которые включат автоматическое удаление ЛОКАЛЬНЫХ профилей после выхода.</para></listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>Перемещаемые профили</term> <listitem><para>При входе пользователя в сеть централизованно хранящийся профиль копируется на рабочую станцию, формируя локальный профиль. Этот локальный профиль остается (хранится на диске рабочей станции) до тех пор, пока не будет изменен ключ реестра, из-за которого этот профиль будет автоматически удален при выходе.</para></listitem>
+	</varlistentry>
+</variablelist>
+
+<para>Варианты работы с перемещаемыми профилями:</para>
+
+<variablelist>
+	<varlistentry>
+		<term>Личные перемещаемые профили</term> <listitem><para>Эти обычно хранятся на общем ресурсе с профилями на центральном (или удобно расположенном локальном) сервере.</para>
+
+		<para>Рабочие станции кэшируют (хранят) локальную копию профиля. Эта кэшированная копия используется, когда профиль не может быть загружен при следующем входе в сеть.</para></listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>Групповые профили</term> <listitem><para>Это загружается с центрального сервера профилей.</para></listitem>
+	</varlistentry>
+
+	<varlistentry>
+		<term>Обязательные профили</term> <listitem><para>Обязательные профили могут быть созданы для пользователя, так же, как и для любой группы, участником которой является пользователь. Обязательные профили не могут быть изменены обычными пользователями. Только администратор может изменить или перенастроить обязательный профиль.</para></listitem>
+	</varlistentry>
+</variablelist>
+
+<para>Профиль Windows NT4/200x/XP может варьировать в размере от 130KB до очень большого. Файлы PST Outlook часто являются частью профиля и могут иметь в размере много гигабайт. В среднем (в хорошо контролируемой среде) размер перемещаемого профиля в 2MB является правилом хорошего тона - при использовании в целях планирования. В недисциплинированном окружении мне приходилось видеть профили размером до 2GB. Пользователи начинают жаловаться, когда вход на рабочую станцию занимает целый час, но они пожинают плоды глупости (и невежества).</para>
+
+<para>Цель этого обсуждения - показать, как перемещаемые профили и хорошее управление их изменениями, так же, как и хорошая дисциплина, составляют беспроблемную сеть.</para>
+
+<para>Ответ Microsoft на проблему PST - хранение всей электронной почты в базе MS Exchange Server. Это снимает необходимость файла PST.</para>
+
+<para>Локальные профили значат:</para>
+
+<itemizedlist>
+	<listitem><para>Если каждая машина используется многими пользователями, то требуется много дискового пространства.</para></listitem> <listitem><para>Каждая рабочая станция, на которую входит пользователь, имеет свой собственный профиль; они могут сильно различаться от машины к машине.</para></listitem>
+</itemizedlist>
+
+<para>С другой стороны, использование перемещаемых профилей означает:</para>
+
+<itemizedlist>
+	<listitem><para>Сетевой администратор может контролировать окружение "Рабочего стола" всех пользователей.</para></listitem>
+	<listitem><para>Использование обязательных профилей значительно уменьшает временные затраты на управление сетью.</para></listitem>
+	<listitem><para>В долгосрочной перспективе пользователи испытают меньше трудностей.</para></listitem>
+</itemizedlist>
+
+</sect2>
+
+<sect2>
+<title>Изменение профиля по умолчанию</title>
+
+<para><quote>Когда клиент входит на контроллер домена, он ищет профиль для загрузки. Куда мне следует поместить этот профиль по умолчанию? </quote></para>
+
+<para><indexterm><primary>профиль по умолчанию</primary></indexterm> Сначала сервер Samba необходимо настроить как контроллер домена. Это можно сделать установкой в &smb.conf;:</para>
+
+<smbconfblock>
+<smbconfoption name="security">пользователь</smbconfoption>
+<smbconfoption name="os level">32 (или более)</smbconfoption>
+<smbconfoption name="domain logons">Да</smbconfoption>
+</smbconfblock>
+
+<para>Должен быть общий ресурс <smbconfsection name="[netlogon]"/>, доступный на чтение для всех. Хорошая идея - добавить сценарий входа, чтобы предустановить соединения с принтером и сетевыми дисками. Также существует возможность автоматически синхронизировать часы рабочей станции с часами сервера входа (еще одна хорошая вещь, которую стоит сделать).</para>
+
+<note><para>Чтобы включить автоудаление перемещаемых профилей из локального кэша рабочей станции (дискового хранилища), используйте <application>Group Policy Editor</application>, чтобы создать файл <filename>NTConfig.POL</filename> с соответствующими записями. Этот файл должен быть расположен в корневом каталоге общего ресурса <smbconfsection name="netlogon"/>.</para></note>
+
+<para>Клиенты Windows должны участвовать в домене. Машины рабочих групп не используют вход в сеть, следовательно, они не взаимодействуют с профилями домена.</para>
+
+<para>Для перемещаемых профилей добавьте в &smb.conf;:</para>
+
+<smbconfblock>
+<smbconfoption name="logon path">\\%N\profiles\%U</smbconfoption>
+<smbconfcomment>Default logon drive is Z:</smbconfcomment>
+<smbconfoption name="logon drive">H:</smbconfoption>
+<smbconfcomment>Это требует, чтобы общий ресурс PROFILES был доступен на запись для всех.</smbconfcomment>
+</smbconfblock>
+
+</sect2>
+
+<sect2>
+<title>Отладка перемещаемых профилей и политик домена типа NT4.</title>
+
+<para>Поддержка перемещаемые профилей и политик домена выполнена через <command>USERENV.DLL</command>. Статьи Microsoft Knowledge Base articles <ulink url="http://support.microsoft.com/default.aspx?scid=kb;en-us;221833">221833</ulink> и <ulink url="http://support.microsoft.com/default.aspx?scid=kb;en-us;154120">154120</ulink> описывают, как заставить эту DLL отлаживать процесс входа.</para>
+
+</sect2>
+</sect1>
+</chapter>

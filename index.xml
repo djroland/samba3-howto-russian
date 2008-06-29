@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE book PUBLIC "-//Samba-Team//DTD DocBook V4.2-Based Variant V1.0//EN" "http://www.samba.org/samba/DTD/samba-doc">
+<book xmlns:xi="http://www.w3.org/2003/XInclude" id="Samba-HOWTO-Collection" lang="index">
+<title>Официальное руководство и справочник по Samba</title>
+
+<bookinfo>
+	<authorgroup>
+	<editor>&person.jelmer;</editor>
+	<editor>&person.jht;</editor>
+	<editor>&person.jerry;</editor>
+	</authorgroup>
+	<pubdate><?latex \today ?></pubdate>
+<copyright><year>2007</year><holder>Сергей В. Печенко (djroland@narod.ru)</holder></copyright><copyright><year>2007</year><holder>Сергей В. Печенко (djroland@narod.ru)</holder></copyright><copyright><year>2007</year><holder>Сергей В. Печенко (djroland@narod.ru)</holder></copyright><copyright><year>2007</year><holder>Сергей В. Печенко (djroland@narod.ru)</holder></copyright></bookinfo>
+
+	<?latex \setcounter{page}{5} ?>
+
+	<xi:include href="TOSHARG-inside-cover.xml"/>
+
+	<?latex \cleardoublepage ?>
+
+	<xi:include href="../Samba3-HOWTO-attributions.xml">
+		<xi:fallback/>
+	</xi:include>
+
+	<?latex \cleardoublepage ?>
+
+<!-- Contents -->
+	<toc/>
+
+	<?latex \cleardoublepage ?>
+
+	<?latex \listofexamples ?>
+
+	<?latex \cleardoublepage ?>
+
+	<lot/>
+
+	<xi:include href="TOSHARG-foreword-cargill.xml"/>
+
+	<?latex \cleardoublepage ?>
+
+	<xi:include href="TOSHARG-preface.xml"/>
+
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-IntroSMB.xml"/>
+
+	<?latex \cleardoublepage ?>
+
+<!-- Chapters -->
+<part id="introduction">
+<title>Общая установка</title>
+<?latex \pagenumbering{arabic} ?>
+
+<partintro>
+<title>Готовим Samba к настройке</title>
+
+<para>Этот раздел Samba-HOWTO-Collection содержит общую информацию об установке Samba и о том, как настроить части Samba, которые, скорее всего, Вам понадобятся. ПОЖАЛУЙСТА, прочтите это.</para>
+
+</partintro>
+
+	<?latex \cleardoublepage ?>
+
+	<xi:include href="TOSHARG-Install.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-FastStart.xml"/>
+	<?latex \cleardoublepage ?>
+
+</part>
+
+<part id="type">
+<title>Основы настройки сервера</title>
+<partintro>
+<title>Первые шаги в настройке сервера.</title>
+
+<para>Samba в сетях SMB может работать в различных режимах. Этот раздел HOWTO содержит информацию по настройке Samba для работы в качестве того сервера, который нужен Вашей сети. Пожалуйста, прочитайте этот раздел внимательно.</para>
+
+</partintro>
+
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-ServerType.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-PDC.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-BDC.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-DomainMember.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-StandAloneServer.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-WindowsClientConfig.xml"/>
+	<?latex \cleardoublepage ?>
+
+</part>
+
+<part id="optional">
+<title>Расширенная настройка</title>
+<partintro>
+<title>Ценные советы и секреты</title>
+
+<para>Samba имеет несколько функций, которые Вы можете хотеть или не хотеть использовать. В каждой главе этой части раскрыто по специфической функции Samba.</para>
+
+</partintro>
+
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-ChangeNotes.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-NetworkBrowsing.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Passdb.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Group-Mapping.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-TheNetCommand.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-IDMAP.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-RightsAndPriviliges.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-AccessControls.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-locking.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Securing.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-InterdomainTrusts.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-msdfs.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Printing.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-CUPS-printing.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-VFS.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Winbind.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-AdvancedNetworkAdmin.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-PolicyMgmt.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-ProfileMgmt.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-PAM.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Integrating-with-Windows.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Unicode.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Backup.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-HighAvailability.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-LargeFile.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-ConfigSmarts.xml"/>
+	<?latex \cleardoublepage ?>
+
+</part>
+
+<part id="migration">
+<title>Миграция и обновление</title>
+
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-upgrading-to-3.0.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-NT4Migration.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-SWAT.xml"/>
+	<?latex \cleardoublepage ?>
+
+</part>
+
+<part id="troubleshooting">
+<title>Решение проблем</title>
+
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Diagnosis.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Problems.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Bugs.xml"/>
+	<?latex \cleardoublepage ?>
+
+</part>
+
+<part id="Appendix">
+<title>Справочный раздел</title>
+
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Compiling.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Portability.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Other-Clients.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Speed.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-SecureLDAP.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-Support.xml"/>
+	<?latex \cleardoublepage ?>
+	<xi:include href="TOSHARG-DNS-DHCP-Configuration.xml"/>
+	<?latex \cleardoublepage ?>
+</part>
+
+<!-- Comment out the following line to include the manpages.
+	 *Please* do not commit with the two lines below enabled! -->
+<!--
+	<?latex \cleardoublepage ?>
+	<xi:include href="manpages.xml"/>
+-->
+	<?latex \cleardoublepage ?>
+
+<xi:include href="http://www.gnu.org/licenses/gpl.xml"/>
+
+	<?latex \cleardoublepage ?>
+<xi:include href="TOSHARG-glossary.xml"/>
+
+	<?latex \cleardoublepage ?>
+<?latex \chaptermark{Subject index} ?>
+
+<index/>
+
+</book>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE chapter PUBLIC "-//Samba-Team//DTD DocBook V4.2-Based Variant V1.0//EN" "http://www.samba.org/samba/DTD/samba-doc">
+<chapter id="ChangeNotes">
+<chapterinfo>
+	&author.jht;
+	&author.jerry;
+</chapterinfo>
+
+<title>Важные заметки об изменениях в Samba-3.0.23</title>
+
+<para>Samba - текучий и всегда меняющийся проект. Иногда трудно выяснить, какую часть или части документации HOWTO необходимо обновить, чтобы отразить вторжение новых или модифицированных функций. В других ситуациях становится ясно, что документацию необходимо реструктурировать.</para>
+
+<para>Недавно группа пользователей Samba объединилась в вере в создание новой <ulink url="http://wiki.samba.org/">Samba Wiki</ulink>, которая должна стать всезнающим лицом новой документации по Samba. Однако есть надежда, что Wiki будет иметь преимущество за счет большего вклада сообщества, и, следовательно, может поддерживаться более современной. До тех пор, когда эта мечта материализуется и созреет, необходимо продолжать поддержку HOWTO. Эта глава документирует большие отступления от более раннего поведения до тех пор, пока тело этого HOWTO будет реструктурировано или модифицировано.</para>
+
+<para>Эта глава является новой для релиза HOWTO для Samba 3.0.23. Она включает большинство заметок, содержащихся в файле <filename>WHATSNEW.txt</filename>, который входит в тарбол релиза исходного кода Samba.</para>
+
+<sect1>
+<title>Изменения в пользователях и группах</title>
+
+<para>Изменения, документированные здесь, касаются только неотображенных учетных записей пользователей и групп.</para>
+
+<para><indexterm><primary>пользователь</primary></indexterm><indexterm><primary>группа</primary></indexterm><indexterm><primary>относительные идентификаторы</primary><see>RID</see></indexterm><indexterm><primary>net</primary><secondary>groupmap</secondary></indexterm><indexterm><primary>net</primary><secondary>rpc</secondary><tertiary>vampire</tertiary></indexterm> Внутренние процедуры управления пользователями и группами были переписаны, чтобы предотвратить наложение назначенных относительных идентификаторов (RIDs). В прошлом существовала потенциальная проблема при ручном отображении групп Unix командой <command>net groupmap</command> или при переносе домена Windows на домен Samba командой: <command>net rpc vampire</command>.</para>
+
+<para><indexterm><primary>SID</primary></indexterm><indexterm><primary>SAM</primary></indexterm><indexterm><primary>RID</primary></indexterm><indexterm><primary>net</primary><secondary>getlocalsid</secondary></indexterm> Неотображенные пользователи сейчас получают SID в домене <literal>S-1-22-1</literal>, а неотображенные группы получают SID в домене <literal>S-1-22-2</literal>. Ранее им назначался RID в SAM сервера Samba. Для контроллера домена это было под управлением SID домена, для сервера-участника домена или одиночного сервера это было под управлением локальной SAM (смотрити страницу руководства <command>net getlocalsid</command>).</para>
+
+<para><indexterm><primary>неотображенные пользователи</primary></indexterm><indexterm><primary>неотображенные группы</primary></indexterm><indexterm><primary>SID</primary></indexterm><indexterm><primary>NTFS</primary></indexterm><indexterm><primary>GID</primary></indexterm>В результате любые неотображенные пользователи и группы на обновленном контроллере домена Samba могли получить новый SID. Ввиду того, что SID, а не имя хранится в дескрипторах безопасности Windows, это может привести к тому, что пользователь больше не имеет доступа к ресурсу, например, если файл был скопирован с файл-сервера Samba на локальный раздел NTFS клиента Windows. Любые файлы, хранящиеся на сервере Samba, будут доступны, поскольку для проверок безопасности UNIX сохраняет UNIX GID, а не SID.</para>
+
+<para>Пример поможет проиллюстрировать изменение:</para>
+
+<para><indexterm><primary>group mapping</primary></indexterm><indexterm><primary>GID</primary></indexterm><indexterm><primary>ACL</primary></indexterm><indexterm><primary>SID</primary></indexterm> Предположим, что группа <emphasis>developers</emphasis> существует с UNIX GID 782. В этом случае этот пользщовател не существует в таблице отображения групп Samba. Для этой группы будет совершенно нормально появление в редакторе ACL. До Samba-3.0.23 SID группы мог выглядеть как <literal>S-1-5-21-647511796-4126122067-3123570092-2565</literal>.</para>
+
+<para><indexterm><primary>SID</primary></indexterm><indexterm><primary>NTFS</primary></indexterm><indexterm><primary>доступ</primary></indexterm><indexterm><primary>групповые разрешения</primary></indexterm> В релизе Samba-3.0.23 групповой SID будет возвращен как <literal>S-1-22-2-782</literal>. Любые дескрипторы безопасности, связанные с разделом диска NTFS Windows не предоставят доступ в соответствии с групповыми разрешениями, если пользователь не является участником группы <literal>S-1-5-21-647511796-4126122067-3123570092-2565</literal>. Поскольку SID этой группы - <literal>S-1-22-2-782</literal>, и не возвращается в описателе пользователя, Windows не позволит пройти проверке авторизации, даже несмторя на то, что оба SID в некотором смысле относятся к той же самой группе UNIX.</para>
+
+<para><indexterm><primary>отображение групп</primary></indexterm><indexterm><primary>SID</primary></indexterm> Обходом в версиях Samba до 3.0.23 было ручное создание отображения группы домена для группы <emphasis>developers</emphasis> с тем, чтобы она указывала на  <literal>S-1-5-21-647511796-4126122067-3123570092-2565</literal> SID. С выходом Samba-3.0.23 этот обход более не требуется.</para>
+
+</sect1>
+
+<sect1>
+<title>Изменения в парольных базах</title>
+
+<para><indexterm><primary>парольные базы</primary></indexterm><indexterm><primary>GID</primary></indexterm><indexterm><primary>SQL</primary></indexterm><indexterm><primary>XML</primary></indexterm> Параметр <smbconfoption name="passdb backend"/> более не принимает указание множественных парольных баз в цепочечной конфигурации. Также будьте осторожны с тем, что модули парольных баз SQL и XML были убраны в релизе Samba-3.0.23. Больше информации, касающейся внешней поддержки модуля парольной базы SQL, можно получить на веб-сайте <ulink url="http://pdbsql.sourceforge.net/">pdbsql</ulink>.</para>
+
+</sect1>
+
+<sect1>
+<title>Изменения в отображении групп в Samba-3.0.23</title>
+
+<para><indexterm><primary>отображение по умолчанию</primary></indexterm><indexterm><primary>Domain Admins</primary></indexterm><indexterm><primary>smbpasswd</primary></indexterm><indexterm><primary>tdbsam</primary></indexterm><indexterm><primary>парольная база</primary></indexterm><indexterm><primary>group mappings</primary></indexterm><indexterm><primary>GID</primary></indexterm><indexterm><primary>SID</primary></indexterm><indexterm><primary>IDMAP</primary></indexterm><indexterm><primary>winbindd</primary></indexterm><indexterm><primary>группы домена</primary></indexterm> Элементы списков отображения по умолчанию для групп, таких, как <literal>Domain Admins</literal>, более не создаются при использовании парольных баз <literal>smbpasswd</literal> или <literal>tdbsam</literal>. Это значит, что необходимо явно исполнить <command>net groupmap add</command> для создания отображений групп, вместо того, чтобы использовать <command>net groupmap modify</command> для создания отображения групповых SID Windows в GID UNIX. Это изменение не имеет эффекта на функциональность IDMAP winbindd для групп домена.</para>
+
+</sect1>
+
+<sect1>
+<title>Изменения в LDAP в Samba-3.0.23</title>
+
+<para><indexterm><primary>LDAP schema</primary></indexterm><indexterm><primary>sambaSID</primary></indexterm><indexterm><primary>OpenLDAP</primary></indexterm><indexterm><primary>slapindex</primary></indexterm><indexterm><primary>slapd.conf</primary></indexterm> Сделано небольшое обновление в файле схемы Samba LDAP. Правило соответствия подстроки было добавлено в определение аттрибута <literal>sambaSID</literal>. Для серверов OpenLDAP это потребует добавление <literal>index sambaSID sub</literal> в файл настроек <filename>slapd.conf</filename>. Также будет необходимо выполнить команду <command>slapindex</command> после этого изменения. В существующую схему хранения данных изменения не вносились.</para>
+
+</sect1>
+
+</chapter>

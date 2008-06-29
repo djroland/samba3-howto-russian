@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE chapter PUBLIC "-//Samba-Team//DTD DocBook V4.2-Based Variant V1.0//EN" "http://www.samba.org/samba/DTD/samba-doc">
+<chapter id="StandAloneServer">
+<chapterinfo>
+	&author.jht;
+</chapterinfo>
+<title>Одиночные серверы</title>
+
+<para><indexterm><primary>standalone server</primary></indexterm><indexterm><primary>not domain members</primary></indexterm><indexterm><primary>minimum security control</primary></indexterm> Одиночные серверы независимы от контроллеров домена сети. Они не участвуют в домене, и их работа больше похожа на сервер рабочей группы. Во многих случаях одиночный сервер настраивается с минимальным контролем безопасности в предположении, что все хранимые данные будут быстродоступны всем пользователям.</para>
+
+<sect1>
+<title>Достоинства и преимущества</title>
+
+<para><indexterm><primary>secure</primary></indexterm><indexterm><primary>insecure</primary></indexterm> Одиночные серверы могут быть настолько безопасны или небезопасны, насколько это диктует необходимость. Они могут иметь простую или сложную конфигурацию.They can have simple or complex configurations. Кроме того, несмотря на всю шумиху вокруг доенной безопасности, они остаются частым видом установки.</para>
+
+<para><indexterm><primary>файлы только-для-чтения</primary></indexterm><indexterm><primary>share-mode</primary></indexterm><indexterm><primary>read-only</primary></indexterm><indexterm><primary>одиночный сервер</primary></indexterm> Если все, что необходимо - сервер с файлами только-для-чтения или для принтеров, то, возможно, нет смысла делать сложную установку. Например, чертежному бюро необходимо хранить старые чертежи и данные стандартов. Никто не может писать файлы на сервер, потому что определенно важно, чтобы все документы оставались неизменными. Одиночный сервер только-для-чтения с безопасностью на уровне ресурсов является идеальным решением.</para>
+
+<para><indexterm><primary>простота</primary></indexterm><indexterm><primary>принтеры</primary></indexterm><indexterm><primary>сервер с доступом на уровне ресурса</primary></indexterm> Другая ситуация, которая гарантирует простоту - офис, в котором много принтеров, данные для которых буферизуются единым центральным сервером. Каждый должен печатать на любом принтере, и  не нужно ввходить контроль доступа; на сервере печати не будут размещаться файлы.  Снова одиночный сервер только-для-чтения с безопасностью на уровне ресурсов является великолепным решением.</para>
+</sect1>
+
+<sect1>
+<title>Общие сведения</title>
+
+<para><indexterm><primary>одиночный сервер</primary></indexterm><indexterm><primary>локальная аутентификация</primary></indexterm><indexterm><primary>управление доступом</primary></indexterm> Выражение <emphasis>одиночный сервер</emphasis> означает, что он обеспечит локальную аутентификацию и контроль доступа для всех ресурсов, которые доступны на нем. В общем это значит, что у него есть своя база пользователей. В более технических выражениях это означает, что ресурсы машины будут доступны либо в режиме безопасности <emphasis>ресурсов</emphasis>, либо <emphasis>пользователей</emphasis>.</para>
+
+<para><indexterm><primary>создание пользовательских учетных записей</primary></indexterm><indexterm><primary>отсутствие сервиса сетевого входа</primary></indexterm><indexterm><primary>независимый</primary></indexterm> Не требуется специальных действий - кроме создания пользовательских учетных записей. Одиночные серверы не предоставляют службы входа в сеть. Это означает, что машины, использующие сервер, не выполняют доменный вход на него. Как бы рабочие станции ни входили в сеть, эт выполняется независимо от этого сервера. Однако необходимо сделать так, чтобы имя входа сетевого пользователя отображалось локально на одиночном сервере в локально известное имя пользователя. Существует несколько способов сделать это.</para>
+
+<para><indexterm><primary>локальная база аутентификации</primary></indexterm><indexterm><primary>SMB</primary></indexterm><indexterm><primary>не участник домена</primary></indexterm> Samba, похоже, размывает различия в определнии сетевого сервера. Это потому, что база данных аутентификации может быть как на локальном, так и на удаленном сервере, даже если с точки зрения протокола SMB этот сервер Samba не является участником контекста безопасности домена.</para>
+
+<para> </para>
+
+</sect1>
+
+<sect1>
+<title>Пример настройки</title>
+
+<para><indexterm><primary>вхохновить простоту</primary></indexterm><indexterm><primary>сложность</primary></indexterm><link linkend="simplynice">Пример сервера со справочной документацией</link> и <link linkend="SimplePrintServer">Центральный сервер печати</link> разработаны, чтобы вдохновить простоту. Слишком легко проявить высокий уровень креативности и внести слишком много сложности в дизайн сервера и сети.</para>
+
+<sect2 id="RefDocServer">
+<title>Сервер справочной документации</title>
+
+<para><indexterm><primary>только-для-чтения</primary></indexterm><indexterm><primary>справочные документы</primary></indexterm><indexterm><primary>/export</primary></indexterm><indexterm><primary>/etc/passwd</primary></indexterm> Настройка сервера с данными только-для-чтения, доступ к которому имеют все, очень проста.  По умолчанию все ресурсы только для чтения, пока в файле &smb.conf; не указано иное. <link linkend="simplynice">Примерный сервер справочной документации</link> - файл &smb.conf;, который нужен. Предположим, что все справочные документы хранятся в каталоге <filename>/export</filename>, и ими владеет не пользователь nobody, а другой. Нет домашних каталогов, и нет пользователей в системной базе данных UNIX <filename>/etc/passwd</filename>. Это простая в адмнистрировании система.</para>
+
+<example id="simplynice">
+<title>Файл smb.conf для сервера со справочной документацией</title>
+<smbconfblock>
+<smbconfcomment>Глобальные параметры</smbconfcomment>
+<smbconfsection name="[global]"/>
+<smbconfoption name="workgroup">&example.workgroup;</smbconfoption>
+<smbconfoption name="netbios name">&example.server.samba;</smbconfoption>
+<smbconfoption name="security"> SHARE</smbconfoption>
+<smbconfoption name="passdb backend">guest</smbconfoption>
+<smbconfoption name="wins server">192.168.1.1</smbconfoption>
+<smbconfsection name="[data]"/>
+<smbconfoption name="comment">Данные</smbconfoption>
+<smbconfoption name="path">/export</smbconfoption>
+<smbconfoption name="guest only">Yes</smbconfoption>
+</smbconfblock>
+</example>
+
+<blockquote>
+<attribution>Марк Твен</attribution>
+<para>Я бы говорил еще короче, если бы у меня было больше времени на подготовку.</para>
+</blockquote>
+
+<para><indexterm><primary>парольная база</primary></indexterm><indexterm><primary>гость</primary></indexterm><indexterm><primary>имена непривилигерованных учетных записей</primary></indexterm><indexterm><primary>WINS</primary></indexterm> В <link linkend="simplynice">этом примере</link> имя машины установлено в &example.server.samba;, а рабочая группа установлена равной локальной рабочей группе(&example.workgroup;) так, что машина будет отображаться вместе с системами, уже знакомыми пользователю. Единственная необходимая парольная база - база <quote>guest</quote>, чтобы разрешить использование непривилегированных по умолчанию учетных записей. Поскольку в этой сети существует WINS-сервер, мы, кончено, пользуемся им.</para>
+
+<para>Полковник ВВС США стал известен, сказав: <quote>Лучшее - враг хорошего!</quote> Естьчасто называемые причины для того, чтобы избежать сложности, так же, как и технически совершенного решения. К сожалению, многие сетевые администраторы все еще должны научиться делать не более, чем требуется, чтобы избежать проблем.</para>
+
+</sect2>
+
+<sect2 id="SimplePrintServer">
+<title>Централизованный сервер печати</title>
+
+<para><indexterm><primary>простой сервер печати</primary></indexterm><indexterm><primary>инструменты</primary></indexterm> Настройка простого сервера печати является легкой, только если на Вашей системе есть все необходимые инструменты.</para>
+
+<orderedlist>
+<title>Исходные данные</title>
+	<listitem><para>Сервер печати не должен нуждаться в администрировании</para></listitem>
+
+	<listitem><para>Система буферизации и обработки печати на нашем сервере будет CUPS (пожалуйста, обратитесь к <link linkend="CUPS-printing">Поддержка печати CUPS</link> за дальнейшей информацией).</para></listitem>
+
+	<listitem><para>Сервер будет обслуживать только сетевые принтеры. Сетевой администратор настроит окружение CUPS для поддержки принтеров.</para></listitem>
+
+	<listitem><para>Все рабочие станции будут использовать только драйвера PostScript. Выбранный драйвер принтера - поставляемый с ОС Windows для Apple Color LaserWriter.</para></listitem>
+</orderedlist>
+
+<para><indexterm><primary>сервер печати</primary></indexterm><indexterm><primary>/var/spool/samba</primary></indexterm><indexterm><primary>анонимный</primary></indexterm> В этом примере наш сервер печати будет буферизировать все входящие задания печати в <filename>/var/spool/samba</filename> до тех пор, пока задание не будет готово к отправке Samba процессору печати CUPS. Поскольку все входящие соединения будут анонимными (гостевыми), для включения анонимной печати необходимы две вещи.</para>
+
+<itemizedlist>
+<title>Разрешение анонимоной печати</title>
+	<listitem><para><indexterm><primary>гостевая учетная запись</primary></indexterm><indexterm><primary>nobody</primary></indexterm><indexterm><primary>testparm</primary></indexterm> Система UNIX/Linux должна иметь учетную запись <command>гость</command>. По умолчанию это обычно учетная запись <command>nobody</command>. Чтобы найти правильное имя для использования с Вашей версией Samba, сделайте следующее: <screen>
+&prompt;<userinput>testparm -s -v | grep "guest account"</userinput>
+</screen><indexterm><primary>/etc/passwd</primary></indexterm> Удостоверьтесь, что эта учетная запись существует в парольной базе системы (<filename>/etc/passwd</filename>).</para>
+
+	<para><indexterm><primary>установить пароль</primary></indexterm><indexterm><primary>заблокировать пароль</primary></indexterm><indexterm><primary>passwd</primary></indexterm> Хорошей идеей является либо установка пароля на эту учетную запись, или даже запретить ее использование системой UNIX. Предположим, что гостевая учетная запись называется <literal>pcguest</literal>, тогда ее можно заблокировать так: <screen>
+&rootprompt; passwd -l pcguest
+</screen> Точное имя команды может меняться в зависимости от Вашего дистрибутива UNIX/Linux.</para></listitem>
+
+	<listitem><para><indexterm><primary>каталог</primary></indexterm><indexterm><primary>учетная запись гостя</primary></indexterm><indexterm><primary>доступно</primary></indexterm><indexterm><primary>mkdir</primary></indexterm><indexterm><primary>chown</primary></indexterm><indexterm><primary>chmod</primary></indexterm> Каталог, в который Samba будет буферизировать файл, должен быть записываемым для гостевой учетной записи. Следующие команды обеспечат каталогу готовность к использованию: <screen>
+&rootprompt;<userinput>mkdir /var/spool/samba</userinput>
+&rootprompt;<userinput>chown nobody.nobody /var/spool/samba</userinput>
+&rootprompt;<userinput>chmod a+rwt /var/spool/samba</userinput>
+</screen></para></listitem>
+</itemizedlist>
+
+<para>Содержимое файла &smb.conf; показано в <link linkend="AnonPtrSvr">Пример анонимной печати</link>.</para>
+
+<example id="AnonPtrSvr">
+<title>&smb.conf; для анонимной печати</title>
+<smbconfblock>
+<smbconfcomment>Глобальные параметры</smbconfcomment>
+<smbconfsection name="[global]"/>
+<smbconfoption name="workgroup">&example.workgroup;</smbconfoption>
+<smbconfoption name="netbios name">&example.server.samba;</smbconfoption>
+<smbconfoption name="security"> SHARE</smbconfoption>
+<smbconfoption name="passdb backend">guest</smbconfoption>
+<smbconfoption name="printing">ucups</smbconfoption>
+<smbconfoption name="printcap name">ucups</smbconfoption>
+
+<smbconfsection name="[printers]"/>
+<smbconfoption name="comment">Все принтеры</smbconfoption>
+<smbconfoption name="path">/var/spool/samba</smbconfoption>
+<smbconfoption name="printer admin">root</smbconfoption>
+<smbconfoption name="guest ok">Yes</smbconfoption>
+<smbconfoption name="printable">Yes</smbconfoption>
+<smbconfoption name="use client driver">Yes</smbconfoption>
+<smbconfoption name="browseable">No</smbconfoption>
+</smbconfblock>
+</example>
+
+
+<note><para><indexterm><primary>MIME</primary><secondary>прямой</secondary></indexterm><indexterm><primary>прямая печать</primary></indexterm><indexterm><primary>/etc/mime.conv</primary></indexterm><indexterm><primary>/etc/mime.types</primary></indexterm><indexterm><primary>фильтры печати CUPS</primary></indexterm> На системах с CUPS существует возможность передавать необработанные данные напрямую принтеру без промежуточной обработки фильтрами печати CUPS. Если выбрано использование этого режима работы, необходимо натсроить устройство прямой печати. Также необходимо разрешить обработчик raw mime в файлах <filename>/etc/mime.conv</filename> и <filename>/etc/mime.types</filename>. Обратитесь к <link linkend="CUPS-printing">Поддержка печати CUPS</link>, <link linkend="cups-raw">Явное включение прямой печати для application/octet-stream</link>.</para></note>
+
+<para><indexterm><primary>API библиотеки CUPS</primary></indexterm><indexterm><primary>отсутствие файла printcap</primary></indexterm><indexterm><primary>фильтр PDF</primary></indexterm><indexterm><primary>printcap name</primary></indexterm> Пример <link linkend="AnonPtrSvr">Пример анонимной печати</link> исопльзует CUPS для прямой печати через API библиотеки CUPS. Это значит, что все принтеры будут показаны пользователям Windows без необходимости настраивать файл printcap. Если требуется показать только подмножество принтеров или определить специальный тип принтера (например, фильтр PDF), <parameter>printcap name = cups</parameter> можно заменить на <parameter>printcap name = /etc/samba/myprintcap</parameter>. В этом случае указанный файл должен содержать список имен принтеров, которые необходимо показать пользователям сети Windows.</para>
+
+</sect2>
+
+</sect1>
+
+<sect1>
+<title>Общие ошибки</title>
+
+<para><indexterm><primary>величайшая ошибка</primary></indexterm><indexterm><primary>слишком сложная конфигурация</primary></indexterm> Величайшая ошибка, совершаемая слишком часто - создание слишком сложной сетевой конфигурации. Оправдано создание простейшего решения, которое отвечает требованиям момента.</para>
+
+</sect1>
+</chapter>
